@@ -1,4 +1,27 @@
 ---
-title: 'New Plant'
-openapi: 'WEBHOOK /plant/webhook'
+title: '웹훅 테스트'
+description: '자동화 채널로 테스트 페이로드를 전송하여 연결 상태를 검증합니다.'
+openapi: 'POST /webhooks/test'
 ---
+
+웹훅 채널을 만들었으면 `POST /webhooks/test` 로 즉시 테스트를 실행할 수 있습니다. 실제 알림 파이프라인과 동일한 형식의 JSON이 전달됩니다.
+
+<ParamField body="channel_id" type="string" required>
+테스트를 실행할 채널 ID (`chn_` 프리픽스).
+</ParamField>
+
+<ParamField body="event_type" type="string">
+기본값은 `latency.breach`. `schema.violation`, `volume.drop` 등 다양한 샘플 이벤트를 보낼 수 있습니다.
+</ParamField>
+
+<ResponseExample>
+```json
+{
+  "delivery_id": "dlv_73hw1z",
+  "status": "delivered",
+  "sent_at": "2025-11-18T08:30:00Z"
+}
+```
+</ResponseExample>
+
+<Tip>테스트는 실제 속도 제한에 포함되지 않습니다. 다만 30초에 한 번만 호출할 수 있습니다.</Tip>

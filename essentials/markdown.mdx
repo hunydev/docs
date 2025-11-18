@@ -1,88 +1,98 @@
 ---
-title: 'Markdown syntax'
-description: 'Text, title, and styling in standard markdown'
-icon: 'text-size'
+title: '인증과 요청 규칙'
+description: 'api.huny.dev 호출 시 따라야 할 헤더, 스키마, 페이로드 작성 규칙'
+icon: 'shield-check'
 ---
 
-## Titles
+## 기본 헤더
 
-Best used for section headers.
+모든 요청은 TLS(HTTPS) 위에서 전송되어야 하며 아래 헤더를 포함합니다.
 
-```md
-## Titles
+<ParamField header="Authorization" type="string" required>
+Bearer 토큰 형식. 예) `Authorization: Bearer hun_live_abc123`.
+</ParamField>
+
+<ParamField header="Huny-Workspace" type="string" required>
+워크스페이스 ID (`wrk_xxx`). 하나의 키가 여러 워크스페이스에 접근할 수 있으므로 명시적으로 설정해야 합니다.
+</ParamField>
+
+<ParamField header="Idempotency-Key" type="string">
+선택 항목이지만 모든 `POST /records` 요청에 권장됩니다. 최대 255자, 24시간 동안 중복 요청을 자동으로 무시합니다.
+</ParamField>
+
+<ParamField header="X-Huny-Latency" type="number">
+선택 헤더. 클라이언트에서 측정한 전송 완료까지의 지연(ms)을 전달하면 지연 분석에 반영됩니다.
+</ParamField>
+
+<CodeGroup>
+```http 예시
+POST /v1/records HTTP/1.1
+Host: api.huny.dev
+Authorization: Bearer hun_live_a1b2
+Huny-Workspace: wrk_4f93e2
+Idempotency-Key: evt_90001
+Content-Type: application/json
 ```
 
-### Subtitles
+```javascript Fetch
+await fetch('https://api.huny.dev/v1/records', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.HUNY_API_KEY}`,
+    'Huny-Workspace': process.env.HUNY_WORKSPACE,
+    'Idempotency-Key': crypto.randomUUID(),
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(payload)
+});
+```
+</CodeGroup>
 
-Best used for subsection headers.
+## 요청 본문 패턴
 
-```md
-### Subtitles
+<ParamField body="stream_id" type="string" required>
+`strm_` 프리픽스를 가진 스트림 ID. 하나의 레코드는 정확히 한 스트림에 속합니다.
+</ParamField>
+
+<ParamField body="payload" type="object" required>
+실제 도메인 이벤트. 스키마는 스트림 생성 시 정의한 규칙을 따릅니다.
+
+<Expandable title="예약 키">
+  - `id`: 기본 식별자, 문자열  
+  - `occurred_at`: ISO 8601 타임스탬프  
+  - `event`: 이벤트 이름(예: `checkout.completed`)
+</Expandable>
+</ParamField>
+
+<ParamField body="tags" type="object">
+커스텀 키-값 메타데이터. 최대 20개 키, 각 값은 문자열·숫자·불리언.
+</ParamField>
+
+## 오류 모델
+
+Huny는 아래 형태의 오류 응답을 반환합니다.
+
+```json
+{
+  "code": "SCHEMA_VALIDATION_FAILED",
+  "message": "amount must be a number",
+  "correlation_id": "cor_48akt3",
+  "docs_url": "https://docs.huny.dev/errors/schema-validation"
+}
 ```
 
-<Tip>
+<Warning>`correlation_id`는 모든 지원 요청에 포함해야 하며, 14일 동안 조회 가능합니다.</Warning>
 
-Each **title** and **subtitle** creates an anchor and also shows up on the table of contents on the right.
+## 페이지네이션과 필터
 
-</Tip>
+- 기본 페이지네이션은 `cursor` 기반입니다. `?cursor=xxx` 와 `?limit=50` 조합을 사용하세요.
+- 시간 범위 필터는 `occurred_at[from]`, `occurred_at[to]` 쿼리를 사용합니다.
+- 정렬은 `sort=-occurred_at` 처럼 표기합니다.
 
-## Text formatting
+## API 버전 관리
 
-We support most markdown formatting. Simply add `**`, `_`, or `~` around text to format it.
+- 현재 지원 버전은 `v1` 하나입니다.
+- 사전 테스트를 위해 `X-Huny-Preview: v1.1-beta` 헤더를 전달하면 베타 기능을 사용할 수 있습니다.
+- 폐지 예정 필드는 최소 90일 전에 `deprecation_notice` 필드에 명시됩니다.
 
-| Style         | How to write it   | Result          |
-| ------------- | ----------------- | --------------- |
-| Bold          | `**bold**`        | **bold**        |
-| Italic        | `_italic_`        | _italic_        |
-| Strikethrough | `~strikethrough~` | ~strikethrough~ |
-
-You can combine these. For example, write `**_bold and italic_**` to get **_bold and italic_** text.
-
-You need to use HTML to write superscript and subscript text. That is, add `<sup>` or `<sub>` around your text.
-
-| Text Size   | How to write it          | Result                 |
-| ----------- | ------------------------ | ---------------------- |
-| Superscript | `<sup>superscript</sup>` | <sup>superscript</sup> |
-| Subscript   | `<sub>subscript</sub>`   | <sub>subscript</sub>   |
-
-## Linking to pages
-
-You can add a link by wrapping text in `[]()`. You would write `[link to google](https://google.com)` to [link to google](https://google.com).
-
-Links to pages in your docs need to be root-relative. Basically, you should include the entire folder path. For example, `[link to text](/writing-content/text)` links to the page "Text" in our components section.
-
-Relative links like `[link to text](../text)` will open slower because we cannot optimize them as easily.
-
-## Blockquotes
-
-### Singleline
-
-To create a blockquote, add a `>` in front of a paragraph.
-
-> Dorothy followed her through many of the beautiful rooms in her castle.
-
-```md
-> Dorothy followed her through many of the beautiful rooms in her castle.
-```
-
-### Multiline
-
-> Dorothy followed her through many of the beautiful rooms in her castle.
->
-> The Witch bade her clean the pots and kettles and sweep the floor and keep the fire fed with wood.
-
-```md
-> Dorothy followed her through many of the beautiful rooms in her castle.
->
-> The Witch bade her clean the pots and kettles and sweep the floor and keep the fire fed with wood.
-```
-
-### LaTeX
-
-Mintlify supports [LaTeX](https://www.latex-project.org) through the Latex component.
-
-<Latex>8 x (vk x H1 - H2) = (0,1)</Latex>
-
-```md
-<Latex>8 x (vk x H1 - H2) = (0,1)</Latex>
-```
+<Check>`/api-reference/openapi.json` 파일에 항상 최신 스키마가 반영됩니다.</Check>

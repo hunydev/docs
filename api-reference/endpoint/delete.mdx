@@ -1,4 +1,23 @@
 ---
-title: 'Delete Plant'
-openapi: 'DELETE /plants/{id}'
+title: '레코드 삭제'
+description: '재처리 대기 중인 레코드를 취소하거나 잘못 수집된 이벤트를 제거합니다.'
+openapi: 'DELETE /records/{record_id}'
 ---
+
+`DELETE /records/{record_id}` 는 레코드가 아직 보관 단계에 들어가지 않았을 때 삭제를 허용합니다. 삭제 사유는 감사 로그에 기록됩니다.
+
+<ParamField path="record_id" type="string" required>
+`rec_` 프리픽스를 가진 레코드 ID.
+</ParamField>
+
+<ParamField query="reason" type="string">
+삭제 사유. 예) `duplicate_ingest`, `pii_detected`.
+</ParamField>
+
+<Warning>이미 처리 완료된 레코드는 삭제할 수 없습니다. 대신 `POST /records/{id}/reprocess` (곧 출시) 엔드포인트를 이용해 롤백하세요.</Warning>
+
+<AccordionGroup>
+  <Accordion title="자동화 트리거">
+    삭제 요청이 성공하면 연결된 웹훅으로 `record.deleted` 이벤트가 전송되어 다운스트림 시스템과 상태를 동기화합니다.
+  </Accordion>
+</AccordionGroup>

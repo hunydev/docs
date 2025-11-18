@@ -1,80 +1,199 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: "빠른 시작"
+description: "10분 안에 Huny 데이터 품질 모니터를 배포하고 첫 신호를 수집합니다."
 ---
 
-## Get started in three steps
+<Note>
+  모든 예시는 `https://api.huny.dev/v1` 기준이며, 샌드박스 키(`hun_test_`)도 동일한 엔드포인트를 사용합니다.
+</Note>
 
-Get your documentation site running locally and make your first customization.
+## 사전 준비
 
-### Step 1: Set up your local environment
+- `dashboard.huny.dev` 에서 조직과 프로젝트를 만들고 API 키를 발급합니다.
+- 모니터링할 데이터 소스(예: Kafka 토픽, Segment 소스, 애플리케이션 로그)의 메타데이터를 파악합니다.
+- 아웃바운드 콜백을 받을 수 있는 엔드포인트 혹은 Slack/Incident 앱을 준비합니다.
+
+<Tabs>
+  <Tab title="Production">
+    `<baseUrl> = https://api.huny.dev/v1`, 헤더는 `Authorization: Bearer hun_live_xxx`.
+  </Tab>
+  <Tab title="Sandbox">
+    `<baseUrl> = https://api.huny.dev/v1`, 헤더는 `Authorization: Bearer hun_test_xxx`. 테스트 키는 초당 10건으로 제한됩니다.
+  </Tab>
+</Tabs>
+
+## 1. 기본 환경 변수 구성
+
+<Steps>
+  <Step title="워크스페이스와 API 키 정의">
+    ```bash
+    export HUNY_API_KEY="hun_live_xxxxxxxxxxxxx"
+    export HUNY_WORKSPACE="wrk_4f93e2"
+    ```
+    
+    <Tip>키를 소스 코드에 직접 하드코딩하지 말고, 배포 파이프라인을 통해 주입하세요.</Tip>
+  </Step>
+  <Step title="스트림 정의 요청">
+    스트림(stream)은 Huny가 관찰·검증하는 데이터 소스 단위입니다.
+    
+    <RequestExample>
+    ```bash curl
+    curl -X POST "https://api.huny.dev/v1/streams" \
+      -H "Authorization: Bearer $HUNY_API_KEY" \
+      -H "Huny-Workspace: $HUNY_WORKSPACE" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "checkout-events",
+        "retention_hours": 72,
+        "schema": {
+          "id": "string",
+          "event": "string",
+          "occurred_at": "datetime",
+          "amount": "number?",
+          "currency": "string?"
+        },
+        "thresholds": {
+          "latency_ms": 5000,
+          "error_rate": 0.01
+        }
+      }'
+    ```
+    </RequestExample>
+    
+    <ResponseExample>
+    ```json Success
+    {
+      "id": "strm_92bx12",
+      "status": "active",
+      "ingest_url": "https://api.huny.dev/v1/records",
+      "created_at": "2025-11-18T08:15:10Z"
+    }
+    ```
+    </ResponseExample>
+  </Step>
+  <Step title="레코드 전송">
+    이제 애플리케이션에서 이벤트를 전송할 수 있습니다. 실패 시 4xx 응답에 자동 복구 가이드를 포함합니다.
+    
+    <CodeGroup>
+    ```bash cURL
+    curl -X POST "https://api.huny.dev/v1/records" \
+      -H "Authorization: Bearer $HUNY_API_KEY" \
+      -H "Huny-Workspace: $HUNY_WORKSPACE" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "stream_id": "strm_92bx12",
+        "idempotency_key": "evt_001",
+        "payload": {
+          "id": "ord_123",
+          "event": "checkout.completed",
+          "occurred_at": "2025-11-18T08:21:09Z",
+          "amount": 14000,
+          "currency": "KRW"
+        }
+      }'
+    ```
+    
+    ```javascript Node.js
+    import fetch from 'node-fetch';
+    
+    async function sendRecord() {
+      const res = await fetch('https://api.huny.dev/v1/records', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.HUNY_API_KEY}`,
+          'Huny-Workspace': process.env.HUNY_WORKSPACE,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          stream_id: 'strm_92bx12',
+          idempotency_key: `evt_${Date.now()}`,
+          payload: {
+            id: 'ord_123',
+            event: 'checkout.completed',
+            occurred_at: new Date().toISOString(),
+            amount: 14000,
+            currency: 'KRW'
+          }
+        })
+      });
+    
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(`${res.status} ${error.code}: ${error.message}`);
+      }
+    }
+    ```
+    
+    ```python Python
+    import os
+    import requests
+    from datetime import datetime
+    
+    payload = {
+        "stream_id": "strm_92bx12",
+        "idempotency_key": "evt_001",
+        "payload": {
+            "id": "ord_123",
+            "event": "checkout.completed",
+            "occurred_at": datetime.utcnow().isoformat() + "Z",
+            "amount": 14000,
+            "currency": "KRW"
+        }
+    }
+    
+    response = requests.post(
+        "https://api.huny.dev/v1/records",
+        headers={
+            "Authorization": f"Bearer {os.environ['HUNY_API_KEY']}",
+            "Huny-Workspace": os.environ["HUNY_WORKSPACE"],
+            "Content-Type": "application/json"
+        },
+        json=payload,
+        timeout=5
+    )
+    
+    response.raise_for_status()
+    ```
+    </CodeGroup>
+  </Step>
+  <Step title="알림 및 웹훅 확인">
+    정책 위반이나 지연 이벤트가 감지되면 등록한 웹훅으로 아래와 같은 페이로드가 전달됩니다.
+    
+    <ResponseExample>
+    ```json Webhook
+    {
+      "type": "latency.breach",
+      "stream_id": "strm_92bx12",
+      "metric_value": 6300,
+      "threshold": 5000,
+      "sample_event_id": "evt_001",
+      "metadata": {
+        "workspace": "wrk_4f93e2",
+        "ingest_region": "ap-northeast-2"
+      }
+    }
+    ```
+    </ResponseExample>
+    
+    <Check>웹훅 200 OK 응답과 함께, Dashboard > Automation 탭에서 동일한 이벤트가 표시되는지 확인하세요.</Check>
+  </Step>
+</Steps>
+
+## 배포 팁
 
 <AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
+  <Accordion icon="shuffle" title="재시도 전략">
+    429 혹은 5xx 응답 시 지수 백오프(최대 2분)를 적용합니다. SDK를 사용하면 기본적으로 3회 재시도하도록 구성되어 있습니다.
   </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
+  <Accordion icon="gear" title="구축 환경별 구성">
+    - **Serverless**: Keep-alive 비활성화를 권장하며, 단건 호출 지연 모니터링을 위해 `X-Huny-Latency` 헤더를 로깅하세요.
+    - **Batch/ETL**: `idempotency_key`를 배치 파일 이름 + 레코드 오프셋으로 구성하면 재처리 시 중복 삽입을 방지할 수 있습니다.
+  </Accordion>
+  <Accordion icon="shield-check" title="보안">
+    IP 화이트리스트가 필요한 경우 `support@huny.dev`로 CIDR 목록을 전달하면 1영업일 내 반영됩니다.
   </Accordion>
 </AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  문제가 발생하면 `status.huny.dev` 에서 실시간 가용성 정보를 확인하고, 재현 가능한 요청 샘플과 함께 지원팀에 문의해 주세요.
 </Note>

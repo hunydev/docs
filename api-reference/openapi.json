@@ -1,16 +1,19 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "OpenAPI Plant Store",
-    "description": "A sample API that uses a plant store as an example to demonstrate features in the OpenAPI specification",
-    "license": {
-      "name": "MIT"
-    },
-    "version": "1.0.0"
+    "title": "Huny Reliability API",
+    "version": "1.0.0",
+    "description": "리얼타임 데이터 품질을 감시하고 자동화하는 Huny API. 모든 요청은 `https://api.huny.dev/v1` 를 베이스로 하며 Bearer 토큰 인증을 필요로 합니다.",
+    "contact": {
+      "name": "Huny Support",
+      "url": "https://docs.huny.dev",
+      "email": "support@huny.dev"
+    }
   },
   "servers": [
     {
-      "url": "http://sandbox.mintlify.com"
+      "url": "https://api.huny.dev/v1",
+      "description": "Production 및 Sandbox 공용 베이스 URL"
     }
   ],
   "security": [
@@ -19,198 +22,435 @@
     }
   ],
   "paths": {
-    "/plants": {
+    "/streams": {
       "get": {
-        "description": "Returns all plants from the system that the user has access to",
+        "operationId": "listStreams",
+        "summary": "List streams",
+        "description": "워크스페이스 내 모든 데이터 스트림을 조회합니다.",
         "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "description": "조회할 워크스페이스 ID (`wrk_` 프리픽스).",
+            "schema": {
+              "type": "string",
+              "example": "wrk_4f93e2"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "필터링할 스트림 상태",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "paused",
+                "archived"
+              ]
+            }
+          },
           {
             "name": "limit",
             "in": "query",
-            "description": "The maximum number of results to return",
+            "description": "페이지당 항목 수 (1-100)",
             "schema": {
               "type": "integer",
-              "format": "int32"
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "다음 페이지를 위한 커서",
+            "schema": {
+              "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Plant response",
+            "description": "스트림 목록과 다음 커서",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Plant"
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Stream"
+                      }
+                    },
+                    "next_cursor": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    },
+    "/records": {
+      "post": {
+        "operationId": "createRecord",
+        "summary": "Ingest record",
+        "description": "스트림에 새로운 레코드를 전송합니다. 스키마 검증과 정책 실행 결과가 함께 반환됩니다.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "stream_id",
+                  "payload"
+                ],
+                "properties": {
+                  "stream_id": {
+                    "type": "string",
+                    "description": "타깃 스트림 ID",
+                    "example": "strm_92bx12"
+                  },
+                  "idempotency_key": {
+                    "type": "string",
+                    "description": "중복 전송을 방지하기 위한 키",
+                    "example": "evt_001"
+                  },
+                  "payload": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "사용자 정의 이벤트 데이터"
+                  },
+                  "tags": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "description": "선택적 메타데이터"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "레코드가 수신되어 처리 중이거나 거절되었습니다.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Record"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    },
+    "/records/{record_id}": {
+      "delete": {
+        "operationId": "deleteRecord",
+        "summary": "Delete record",
+        "description": "아직 재처리 대기 중인 레코드를 취소하거나 삭제합니다.",
+        "parameters": [
+          {
+            "name": "record_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "rec_8nq4lz"
+            },
+            "description": "삭제할 레코드 ID"
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "삭제 사유 (감사 로그에 저장)"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "레코드 삭제 완료"
+          },
+          "404": {
+            "description": "레코드를 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/test": {
+      "post": {
+        "operationId": "sendWebhookTest",
+        "summary": "Send test webhook",
+        "description": "등록된 웹훅 채널로 테스트 페이로드를 전송해 구성 오류를 빠르게 확인합니다.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "channel_id"
+                ],
+                "properties": {
+                  "channel_id": {
+                    "type": "string",
+                    "example": "chn_c1a9k0"
+                  },
+                  "event_type": {
+                    "type": "string",
+                    "default": "latency.breach"
+                  },
+                  "payload_override": {
+                    "type": "object",
+                    "description": "테스트 페이로드에 주입할 커스텀 필드",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "테스트 전달 결과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "delivery_id": {
+                      "type": "string",
+                      "example": "dlv_73hw1z"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "delivered"
+                    },
+                    "sent_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
                   }
                 }
               }
             }
           },
           "400": {
-            "description": "Unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "description": "Creates a new plant in the store",
-        "requestBody": {
-          "description": "Plant to add to the store",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewPlant"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "plant response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Plant"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/plants/{id}": {
-      "delete": {
-        "description": "Deletes a single plant based on the ID supplied",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "ID of plant to delete",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Plant deleted",
-            "content": {}
-          },
-          "400": {
-            "description": "unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "webhooks": {
-    "/plant/webhook": {
-      "post": {
-        "description": "Information about a new plant added to the store",
-        "requestBody": {
-          "description": "Plant added to the store",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewPlant"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Return a 200 status to indicate that the data was received successfully"
+            "$ref": "#/components/responses/ValidationError"
           }
         }
       }
     }
   },
   "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "HunyAPIKey"
+      }
+    },
     "schemas": {
-      "Plant": {
-        "required": [
-          "name"
-        ],
+      "Stream": {
         "type": "object",
+        "required": [
+          "id",
+          "name",
+          "status",
+          "workspace_id",
+          "region",
+          "schema",
+          "thresholds",
+          "created_at",
+          "updated_at"
+        ],
         "properties": {
-          "name": {
-            "description": "The name of the plant",
-            "type": "string"
+          "id": {
+            "type": "string",
+            "example": "strm_92bx12"
           },
-          "tag": {
-            "description": "Tag to specify the type",
-            "type": "string"
+          "name": {
+            "type": "string",
+            "example": "Checkout events"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "paused",
+              "archived"
+            ]
+          },
+          "workspace_id": {
+            "type": "string",
+            "example": "wrk_4f93e2"
+          },
+          "region": {
+            "type": "string",
+            "example": "ap-northeast-2"
+          },
+          "schema": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "example": {
+              "id": "string",
+              "event": "string",
+              "amount": "number?"
+            }
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/Thresholds"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
-      "NewPlant": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/Plant"
-          },
-          {
-            "required": [
-              "id"
-            ],
-            "type": "object",
-            "properties": {
-              "id": {
-                "description": "Identification number of the plant",
-                "type": "integer",
-                "format": "int64"
-              }
-            }
-          }
-        ]
-      },
-      "Error": {
-        "required": [
-          "error",
-          "message"
-        ],
+      "Thresholds": {
         "type": "object",
         "properties": {
-          "error": {
+          "latency_ms": {
             "type": "integer",
-            "format": "int32"
+            "example": 5000
+          },
+          "error_rate": {
+            "type": "number",
+            "example": 0.01
+          },
+          "missing_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Record": {
+        "type": "object",
+        "required": [
+          "id",
+          "stream_id",
+          "status",
+          "payload",
+          "ingested_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "rec_8nq4lz"
+          },
+          "stream_id": {
+            "type": "string",
+            "example": "strm_92bx12"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "rejected"
+            ]
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "ingested_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "rejection_reason": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "SCHEMA_VALIDATION_FAILED"
           },
           "message": {
             "type": "string"
+          },
+          "correlation_id": {
+            "type": "string",
+            "example": "cor_48akt3"
+          },
+          "docs_url": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://docs.huny.dev/errors/schema-validation"
           }
         }
       }
     },
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer"
+    "responses": {
+      "UnauthorizedError": {
+        "description": "유효하지 않은 API 키 혹은 권한 부족",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "요청 본문 혹은 파라미터 검증 실패",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
       }
     }
   }

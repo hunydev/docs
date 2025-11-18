@@ -1,87 +1,95 @@
 ---
-title: 'Navigation'
-description: 'The navigation field in docs.json defines the pages that go in the navigation menu'
+title: '워크스페이스 구조'
+description: '조직, 프로젝트, 스트림, 정책이 어떻게 연결되어 있는지 이해합니다.'
 icon: 'map'
 ---
 
-The navigation menu is the list of links on every website.
+<Info>
+  Huny는 조직 → 워크스페이스 → 스트림 → 폴리시 계층 구조를 따릅니다. 적절한 구조화는 권한, 청구, 모니터링의 기본 단위가 됩니다.
+</Info>
 
-You will likely update `docs.json` every time you add a new page. Pages do not show up automatically.
+## 계층 모델
 
-## Navigation syntax
+<ResponseField name="organization" type="object" required>
+청구 및 감사의 최상위 단위. 하나의 조직은 여러 워크스페이스를 가질 수 있습니다.
 
-Our navigation syntax is recursive which means you can make nested navigation groups. You don't need to include `.mdx` in page names.
+<Expandable title="필드">
+  <ResponseField name="id" type="string">`org_` 프리픽스</ResponseField>
+  <ResponseField name="name" type="string">조직명</ResponseField>
+  <ResponseField name="billing_plan" type="string">`starter`, `scale`, `enterprise`</ResponseField>
+</Expandable>
+</ResponseField>
 
-<CodeGroup>
+<ResponseField name="workspace" type="object" required>
+팀 혹은 환경 단위. API 호출 시 반드시 `Huny-Workspace` 헤더에 전달합니다.
 
-```json Regular Navigation
-"navigation": {
-  "tabs": [
-    {
-      "tab": "Docs",
-      "groups": [
-        {
-          "group": "Getting Started",
-          "pages": ["quickstart"]
-        }
-      ]
-    }
-  ]
-}
-```
+<Expandable title="필드">
+  <ResponseField name="region" type="string">`ap-northeast-2`, `us-east-1` 등</ResponseField>
+  <ResponseField name="environments" type="array">`production`, `staging`, `sandbox`</ResponseField>
+</Expandable>
+</ResponseField>
 
-```json Nested Navigation
-"navigation": {
-  "tabs": [
-    {
-      "tab": "Docs",
-      "groups": [
-        {
-          "group": "Getting Started",
-          "pages": [
-            "quickstart",
-            {
-              "group": "Nested Reference Pages",
-              "pages": ["nested-reference-page"]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
-```
+<ResponseField name="stream" type="object" required>
+관찰 대상 데이터 소스.
 
-</CodeGroup>
+<Expandable title="필드">
+  <ResponseField name="schema" type="object">필수/선택 필드 정의</ResponseField>
+  <ResponseField name="thresholds" type="object">지연, 오류율, 누락 필드 임계값</ResponseField>
+  <ResponseField name="ingest_url" type="string">`/v1/records` 고정</ResponseField>
+</Expandable>
+</ResponseField>
 
-## Folders
+<ResponseField name="policy" type="object">
+스트림별 실행 규칙. 여러 정책을 중첩해 실행 순서를 제어할 수 있습니다.
 
-Simply put your MDX files in folders and update the paths in `docs.json`.
+<Expandable title="예시">
+  ```json
+  {
+    "when": "payload.event == 'checkout.completed'",
+    "enforce": [
+      "required(payload.amount)",
+      "max_latency(5000)"
+    ],
+    "actions": [
+      "notify.slack",
+      "retry.ingest"
+    ]
+  }
+  ```
+</Expandable>
+</ResponseField>
 
-For example, to have a page at `https://yoursite.com/your-folder/your-page` you would make a folder called `your-folder` containing an MDX file called `your-page.mdx`.
+<ResponseField name="automation" type="object">
+웹훅, Slack, PagerDuty 같은 대상 채널을 묶어두는 단위입니다.
+</ResponseField>
 
-<Warning>
+## 권장 구조
 
-You cannot use `api` for the name of a folder unless you nest it inside another folder. Mintlify uses Next.js which reserves the top-level `api` folder for internal server calls. A folder name such as `api-reference` would be accepted.
+<Steps>
+  <Step title="조직을 도메인 기준으로 구분">
+    멀티테넌트 SaaS라면 고객 도메인별 조직, 내부용이라면 회사 전체를 하나의 조직으로 유지하세요.
+  </Step>
+  <Step title="워크스페이스 = 환경">
+    `production`, `staging`, `dev` 처럼 배포 환경과 일치시키면 접근 제어가 단순해집니다.
+  </Step>
+  <Step title="스트림은 데이터 소스별">
+    Kafka 토픽, Segment 소스, S3 버킷 등 데이터 소스 단위로 나누면 정책 재사용이 용이합니다.
+  </Step>
+</Steps>
 
-</Warning>
+## 거버넌스 팁
 
-```json Navigation With Folder
-"navigation": {
-  "tabs": [
-    {
-      "tab": "Docs",
-      "groups": [
-        {
-          "group": "Group Name",
-          "pages": ["your-folder/your-page"]
-        }
-      ]
-    }
-  ]
-}
-```
+<AccordionGroup>
+  <Accordion title="권한 위임">
+    - 조직 역할: `owner`, `admin`, `billing`, `viewer`  
+    - 워크스페이스 역할: `maintainer`, `analyst`, `integrator`
+  </Accordion>
+  <Accordion title="네이밍">
+    `stream` ID는 시스템이 부여하지만, `display_name`에 소스·지역·환경을 명시하면 탐색이 쉬워집니다. 예) `Segment Checkout (apne2 / prod)`.
+  </Accordion>
+  <Accordion title="API 제한">
+    워크스페이스당 초당 200 요청이 기본입니다. 필요 시 `support@huny.dev` 로 증설을 요청하세요.
+  </Accordion>
+</AccordionGroup>
 
-## Hidden pages
-
-MDX files not included in `docs.json` will not show up in the sidebar but are accessible through the search bar and by linking directly to them.
+<Check>구조 변경은 대부분 즉시 반영되지만, 정책 캐시는 최대 60초까지 지연될 수 있습니다.</Check>

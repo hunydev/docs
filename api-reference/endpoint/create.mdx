@@ -1,4 +1,49 @@
 ---
-title: 'Create Plant'
-openapi: 'POST /plants'
+title: '레코드 수집'
+description: '임의의 이벤트 페이로드를 스트림에 전송하고 스키마 검증 결과를 받습니다.'
+openapi: 'POST /records'
 ---
+
+`POST /records` 는 모든 데이터 수집의 중심 엔드포인트입니다. 페이로드는 스트림 생성 시 정의한 스키마에 맞아야 하며, Huny가 자동으로 검증합니다.
+
+<ParamField body="stream_id" type="string" required>
+이벤트를 보낼 대상 스트림 ID.
+</ParamField>
+
+<ParamField body="payload" type="object" required>
+실제 비즈니스 이벤트 객체. 최소한 `id`, `event`, `occurred_at` 필드를 포함해야 합니다.
+</ParamField>
+
+<ParamField body="idempotency_key" type="string">
+중복 방지 키. 같은 키로 24시간 내 재전송하면 최초 응답이 재사용됩니다.
+</ParamField>
+
+<Tip>SDK를 사용하는 경우 `client.records.create({ ... })` 가 동일한 HTTP 요청을 실행하며, 자동 재시도 로직을 제공합니다.</Tip>
+
+<RequestExample>
+```json
+{
+  "stream_id": "strm_92bx12",
+  "idempotency_key": "evt_001",
+  "payload": {
+    "id": "ord_123",
+    "event": "checkout.completed",
+    "occurred_at": "2025-11-18T08:21:09Z",
+    "amount": 14000,
+    "currency": "KRW"
+  }
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json
+{
+  "id": "rec_8nq4lz",
+  "stream_id": "strm_92bx12",
+  "status": "accepted",
+  "rejection_reason": null,
+  "ingested_at": "2025-11-18T08:21:09Z"
+}
+```
+</ResponseExample>

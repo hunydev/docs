@@ -1,97 +1,76 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Huny 개요"
+description: "api.huny.dev를 통해 데이터 품질·신뢰도를 실시간으로 감시하고 자동화하는 방법을 소개합니다."
 ---
 
-## Setting up
+<Info>
+  `api.huny.dev` 는 모든 프로덕션 호출의 베이스 도메인입니다. 샌드박스도 동일한 엔드포인트를 사용하지만 `hun_test_` 프리픽스 키를 허용합니다. 전체 문서는 `docs.huny.dev`, 릴리스 노트와 이야기는 `blog.huny.dev` 에서 확인할 수 있습니다.
+</Info>
 
-Get your documentation site up and running in minutes.
+## Huny는 무엇을 해결하나요?
+
+Huny는 데이터 파이프라인, 이벤트 스트림, 고객 여정에 침투해 **실시간 진단 + 시정 조치 API**를 제공합니다. 단일 API로 다음을 수행할 수 있습니다.
+
+- 수집되는 모든 레코드를 정책에 따라 검증하고 풍부화
+- SLA 위반, 누락 필드, 지연과 같은 이슈를 감지
+- 감지된 이슈를 즉시 웹훅·슬랙·티켓으로 전송하고, 백필 작업을 자동 실행
+
+<Frame caption="Dashboard 샘플 – hero 이미지는 색상 시스템과 동일하게 사용됩니다.">
+  <img src="/images/hero-light.png" alt="Huny 플랫폼 대시보드 프리뷰" />
+</Frame>
+
+## 핵심값 한눈에
+
+<Columns cols={2}>
+  <Card title="스트림 수준 관찰" icon="waveform-circle" href="/development">
+    1분마다 집계되는 지연, 오류율, 스루풋을 API로 직접 조회하거나 알람 조건을 정의하세요.
+  </Card>
+  <Card title="정책 기반 정규화" icon="shield-check" href="/essentials/markdown">
+    스키마, 필수 필드, 민감 데이터 마스킹을 선언형으로 정의하여 모든 레코드에 일관되게 적용합니다.
+  </Card>
+  <Card title="선호 언어 SDK" icon="code" href="/essentials/code">
+    공식 SDK(REST, JavaScript, Python)를 사용해 이벤트를 전송하고, 검증 실패시 재시도 로직을 자동으로 적용합니다.
+  </Card>
+  <Card title="자동화 시나리오" icon="bolt" href="/api-reference/endpoint/webhook">
+    트리거를 정의해 팀 채널, Incident 도구, 재처리 파이프라인을 한 번에 묶습니다.
+  </Card>
+</Columns>
+
+## 10분 안에 구축하는 표준 워크플로
+
+<Steps>
+  <Step title="API 키 발급">
+    Dashboard에서 프로젝트별 `hun_live_` 또는 `hun_test_` 키를 생성하고, [헤더 인증](/essentials/markdown#인증-포맷)을 따라 환경 변수에 보관합니다.
+  </Step>
+  <Step title="스트림 및 정책 정의">
+    `/v1/streams` 에서 데이터 소스를 등록하고, 스키마 및 모니터링 임곗값을 JSON으로 선언합니다.
+  </Step>
+  <Step title="레코드 전송">
+    애플리케이션, 파이프라인, 워커에서 `/v1/records` 로 이벤트를 전송합니다. 실패 시 Huny가 상세 원인을 반환하며 재시도 지침이 포함됩니다.
+    
+    <Tip>SDK를 사용하면 배치 재시도, 유휴 연결 재사용, 메트릭 전송이 자동으로 설정됩니다.</Tip>
+  </Step>
+  <Step title="자동화 연결">
+    정책 위반이 발생하면 `/v1/webhooks` 에 등록한 엔드포인트로 JSON 페이로드가 전달됩니다. 필요 시 Huny Console에서 단일 클릭으로 재전송 가능합니다.
+  </Step>
+</Steps>
+
+## 바로 시작하기
 
 <Card
-  title="Start here"
+  title="3단계 빠른 시작"
   icon="rocket"
   href="/quickstart"
   horizontal
 >
-  Follow our three step quickstart guide.
+  샘플 데이터를 전송하고 첫 번째 모니터를 배포해 보세요.
 </Card>
 
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
-
-## Create beautiful pages
-
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
 <Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
+  title="API 레퍼런스"
+  icon="book"
+  href="/api-reference/introduction"
+  horizontal
 >
-  Browse our showcase of exceptional documentation sites.
+  `openapi.json`을 기반으로 모든 엔드포인트, 파라미터, 에러 모델을 탐색할 수 있습니다.
 </Card>

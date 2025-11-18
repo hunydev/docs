@@ -1,4 +1,27 @@
 ---
-title: 'Get Plants'
-openapi: 'GET /plants'
+title: '스트림 조회'
+description: '워크스페이스에 연결된 모든 데이터 스트림과 임곗값을 검색합니다.'
+openapi: 'GET /streams'
 ---
+
+`GET /streams` 엔드포인트는 지정한 워크스페이스의 스트림 목록을 커서 기반 페이지네이션으로 반환합니다.
+
+<ParamField query="workspace_id" type="string" required>
+필수 값. `wrk_` 프리픽스를 가진 워크스페이스 ID입니다.
+</ParamField>
+
+<ParamField query="status" type="string">
+`active`, `paused`, `archived` 중 하나로 상태를 필터링합니다.
+</ParamField>
+
+<Note>
+  응답의 `next_cursor` 값을 사용해 다음 페이지를 요청하세요. 커서가 `null`이면 더 이상 데이터가 없습니다.
+</Note>
+
+<ResponseField name="thresholds.latency_ms" type="number">
+해당 스트림에 허용된 지연 임곗값(ms). 초과 시 웹훅 및 알림이 발생합니다.
+</ResponseField>
+
+<ResponseField name="schema" type="object">
+필수/옵셔널 필드 정의. `amount: "number?"` 처럼 물음표가 붙으면 선택 필드입니다.
+</ResponseField>

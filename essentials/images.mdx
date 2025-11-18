@@ -1,59 +1,73 @@
 ---
-title: 'Images and embeds'
-description: 'Add image, video, and other HTML elements'
+title: '시각화와 미디어'
+description: '운영 현황, 데모, 알림 플레이백을 문서에 효과적으로 삽입하는 방법'
 icon: 'image'
 ---
 
-<img
-  style={{ borderRadius: '0.5rem' }}
-  src="https://mintlify-assets.b-cdn.net/bigbend.jpg"
-/>
+## 대시보드 캡처 공유
 
-## Image
+제품에 포함된 PNG 자산을 그대로 사용할 수 있습니다.
 
-### Using Markdown
-
-The [markdown syntax](https://www.markdownguide.org/basic-syntax/#images) lets you add images using the following code
+<Frame caption="실시간 지연·오류율을 보여주는 Huny 대시보드">
+  <img
+    src="/images/hero-dark.png"
+    alt="Huny dashboard overview"
+    style={{ borderRadius: '0.75rem' }}
+  />
+</Frame>
 
 ```md
-![title](/path/image.jpg)
+<Frame caption="실시간 지연·오류율을 보여주는 Huny 대시보드">
+  <img src="/images/hero-dark.png" alt="Huny dashboard overview" />
+</Frame>
 ```
 
-Note that the image file size must be less than 5MB. Otherwise, we recommend hosting on a service like [Cloudinary](https://cloudinary.com/) or [S3](https://aws.amazon.com/s3/). You can then use that URL and embed.
+<Tip>모든 이미지에는 한국어/영어 사용자 모두 이해할 수 있는 구체적 alt 텍스트를 작성하세요.</Tip>
 
-### Using embeds
+## 이벤트 타임라인 강조
 
-To get more customizability with images, you can also use [embeds](/writing-content/embed) to add images
+여러 이미지를 나란히 배치해 루트-원인 분석 흐름을 설명합니다.
+
+```md
+<Columns cols={2}>
+  <Frame caption="스트림 지연 그래프">
+    <img src="/images/hero-light.png" alt="Stream latency graph" />
+  </Frame>
+  <Frame caption="체크 패스 상태">
+    <img src="/images/checks-passed.png" alt="All checks passed" />
+  </Frame>
+</Columns>
+```
+
+## Incident 플레이백 비디오
+
+샘플 비디오 혹은 실서비스 리플레이를 iframe 또는 `<video>` 요소로 임베드합니다.
 
 ```html
-<img height="200" src="/path/image.jpg" />
+<video
+  controls
+  className="w-full aspect-video rounded-xl"
+  src="https://cdn.huny.dev/demos/incident-42.mp4"
+></video>
 ```
 
-## Embeds and HTML elements
+YouTube 혹은 내부 플레이어도 삽입할 수 있습니다.
 
+```html
 <iframe
-  width="560"
-  height="315"
+  className="w-full aspect-video rounded-xl"
   src="https://www.youtube.com/embed/4KzFe50RQkQ"
-  title="YouTube video player"
+  title="Latency mitigation walkthrough"
   frameBorder="0"
   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
   allowFullScreen
-  style={{ width: '100%', borderRadius: '0.5rem' }}
 ></iframe>
-
-<br />
-
-<Tip>
-
-Mintlify supports [HTML tags in Markdown](https://www.markdownguide.org/basic-syntax/#html). This is helpful if you prefer HTML tags to Markdown syntax, and lets you create documentation with infinite flexibility.
-
-</Tip>
-
-### iFrames
-
-Loads another HTML page within the document. Most commonly used for embedding videos.
-
-```html
-<iframe src="https://www.youtube.com/embed/4KzFe50RQkQ"> </iframe>
 ```
+
+## 유용한 HTML 요소
+
+- `<Badge>`로 환경, 상태, 데이터센터를 강조  
+- `<Tooltip>`으로 민감한 운영 지표 설명  
+- `<Accordion>` 내부에 GIF를 넣어 재현 단계를 제공
+
+<Check>문서 내 모든 미디어는 `docs.huny.dev` 또는 CDN(CloudFront, Cloudflare R2 등)에서 서빙하는 것이 가장 안정적입니다.</Check>
