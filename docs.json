@@ -1,67 +1,78 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Huny API",
   "colors": {
     "primary": "#16A34A",
     "light": "#07C983",
     "dark": "#15803D"
   },
   "favicon": "/favicon.svg",
+  "api": {
+    "baseUrl": "https://api.huny.dev/v1",
+    "auth": {
+      "method": "bearer"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "시작하기",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "소개",
             "pages": [
               "index",
-              "quickstart",
-              "development"
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "인증",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "api-reference/authentication"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "가이드",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/rate-limits",
+              "guides/error-handling",
+              "guides/webhooks",
+              "guides/best-practices"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API 레퍼런스",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "개요",
             "pages": [
               "api-reference/introduction"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "사용자",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
+              "api-reference/endpoint/users/get",
+              "api-reference/endpoint/users/create",
+              "api-reference/endpoint/users/update",
+              "api-reference/endpoint/users/delete"
+            ]
+          },
+          {
+            "group": "리소스",
+            "pages": [
+              "api-reference/endpoint/resources/get",
+              "api-reference/endpoint/resources/create",
+              "api-reference/endpoint/resources/update",
+              "api-reference/endpoint/resources/delete"
+            ]
+          },
+          {
+            "group": "웹훅",
+            "pages": [
               "api-reference/endpoint/webhook"
             ]
           }
@@ -71,13 +82,13 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
+          "anchor": "문서",
+          "href": "https://docs.huny.dev",
           "icon": "book-open-cover"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
+          "anchor": "블로그",
+          "href": "https://blog.huny.dev",
           "icon": "newspaper"
         }
       ]
@@ -90,14 +101,14 @@
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "지원",
+        "href": "mailto:support@huny.dev"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "label": "대시보드",
+      "href": "https://api.huny.dev/dashboard"
     }
   },
   "contextual": {
@@ -114,9 +125,9 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "x": "https://x.com/hunydev",
+      "github": "https://github.com/hunydev",
+      "linkedin": "https://linkedin.com/company/hunydev"
     }
   }
 }

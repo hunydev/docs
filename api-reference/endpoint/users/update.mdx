@@ -1,0 +1,133 @@
+---
+title: '사용자 정보 업데이트'
+openapi: 'PUT /users/{id}'
+---
+
+특정 사용자의 정보를 업데이트합니다.
+
+## 요청 예시
+
+<RequestExample>
+```bash cURL
+curl -X PUT 'https://api.huny.dev/v1/users/usr_1234567890' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "수정된 이름",
+    "status": "active",
+    "role": "admin"
+  }'
+```
+</RequestExample>
+
+## 경로 파라미터
+
+<ParamField path="id" type="string" required>
+업데이트할 사용자의 고유 ID입니다.
+</ParamField>
+
+## 요청 본문
+
+<ParamField body="name" type="string">
+사용자 이름입니다. 최소 2자 이상이어야 합니다.
+</ParamField>
+
+<ParamField body="status" type="string">
+사용자 상태입니다. 가능한 값: `active`, `inactive`, `suspended`
+</ParamField>
+
+<ParamField body="role" type="string">
+사용자 역할입니다.
+</ParamField>
+
+<Note>
+  요청 본문의 모든 필드는 선택사항입니다. 전송한 필드만 업데이트됩니다.
+</Note>
+
+## 성공 응답
+
+<ResponseExample>
+```json Success Response (200)
+{
+  "data": {
+    "id": "usr_1234567890",
+    "email": "user@example.com",
+    "name": "수정된 이름",
+    "status": "active",
+    "role": "admin",
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T12:00:00Z"
+  }
+}
+```
+</ResponseExample>
+
+## 응답 필드
+
+<ResponseField name="data" type="object" required>
+업데이트된 사용자 객체입니다. 업데이트된 필드는 `updated_at`이 변경됩니다.
+</ResponseField>
+
+## 에러 응답
+
+### 사용자를 찾을 수 없음
+
+<ResponseExample>
+```json Error Response (404)
+{
+  "error": {
+    "code": "USER_NOT_FOUND",
+    "message": "사용자를 찾을 수 없습니다.",
+    "details": {
+      "id": "usr_1234567890"
+    }
+  }
+}
+```
+</ResponseExample>
+
+### 유효하지 않은 상태 값
+
+<ResponseExample>
+```json Error Response (400)
+{
+  "error": {
+    "code": "INVALID_STATUS",
+    "message": "유효하지 않은 사용자 상태입니다.",
+    "details": {
+      "field": "status",
+      "value": "invalid_status",
+      "allowed_values": ["active", "inactive", "suspended"]
+    }
+  }
+}
+```
+</ResponseExample>
+
+## 사용 예시
+
+### 상태만 업데이트
+
+```bash
+curl -X PUT 'https://api.huny.dev/v1/users/usr_1234567890' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "status": "inactive"
+  }'
+```
+
+### 역할 변경
+
+```bash
+curl -X PUT 'https://api.huny.dev/v1/users/usr_1234567890' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "role": "admin"
+  }'
+```
+
+<Tip>
+  부분 업데이트가 필요한 경우 `PATCH` 메서드를 사용할 수도 있습니다. `PUT`은 전체 리소스를 교체하는 용도로 사용됩니다.
+</Tip>

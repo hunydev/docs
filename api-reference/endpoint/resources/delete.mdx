@@ -1,0 +1,29 @@
+---
+title: '리소스 삭제'
+openapi: 'DELETE /resources/{id}'
+---
+
+시스템에서 리소스를 삭제합니다.
+
+## 요청 예시
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.huny.dev/v1/resources/res_1234567890' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+</RequestExample>
+
+## 경로 파라미터
+
+<ParamField path="id" type="string" required>
+삭제할 리소스의 고유 ID입니다.
+</ParamField>
+
+## 성공 응답
+
+성공적으로 삭제되면 `204 No Content` 상태 코드를 반환하며 응답 본문은 없습니다.
+
+<Warning>
+  삭제 작업은 되돌릴 수 없습니다. 삭제하기 전에 신중하게 확인하세요.
+</Warning>

@@ -1,0 +1,184 @@
+---
+title: '사용자 목록 조회'
+openapi: 'GET /users'
+---
+
+사용자 목록을 조회합니다. 페이지네이션, 필터링, 정렬 기능을 지원합니다.
+
+## 요청 예시
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.huny.dev/v1/users?page=1&per_page=20&status=active' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+</RequestExample>
+
+## 쿼리 파라미터
+
+<ParamField query="page" type="integer" default="1">
+페이지 번호입니다. 1부터 시작합니다.
+</ParamField>
+
+<ParamField query="per_page" type="integer" default="20">
+페이지당 반환할 항목 수입니다. 최대 100까지 설정할 수 있습니다.
+</ParamField>
+
+<ParamField query="status" type="string">
+사용자 상태로 필터링합니다. 가능한 값: `active`, `inactive`, `suspended`
+</ParamField>
+
+<ParamField query="role" type="string">
+사용자 역할로 필터링합니다.
+</ParamField>
+
+<ParamField query="sort" type="string" default="created_at">
+정렬할 필드입니다. 가능한 값: `created_at`, `updated_at`, `name`, `email`
+</ParamField>
+
+<ParamField query="order" type="string" default="desc">
+정렬 순서입니다. `asc` (오름차순) 또는 `desc` (내림차순)
+</ParamField>
+
+## 성공 응답
+
+<ResponseExample>
+```json Success Response
+{
+  "data": [
+    {
+      "id": "usr_1234567890",
+      "email": "user@example.com",
+      "name": "홍길동",
+      "status": "active",
+      "role": "user",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    },
+    {
+      "id": "usr_0987654321",
+      "email": "admin@example.com",
+      "name": "관리자",
+      "status": "active",
+      "role": "admin",
+      "created_at": "2024-01-14T09:20:00Z",
+      "updated_at": "2024-01-14T09:20:00Z"
+    }
+  ],
+  "meta": {
+    "total": 150,
+    "page": 1,
+    "per_page": 20,
+    "total_pages": 8
+  },
+  "links": {
+    "first": "https://api.huny.dev/v1/users?page=1",
+    "last": "https://api.huny.dev/v1/users?page=8",
+    "prev": null,
+    "next": "https://api.huny.dev/v1/users?page=2"
+  }
+}
+```
+</ResponseExample>
+
+## 응답 필드
+
+<ResponseField name="data" type="array" required>
+사용자 객체 배열입니다.
+
+<Expandable title="User 객체">
+  <ResponseField name="id" type="string" required>
+  사용자 고유 ID입니다.
+  </ResponseField>
+
+  <ResponseField name="email" type="string" required>
+  사용자 이메일 주소입니다.
+  </ResponseField>
+
+  <ResponseField name="name" type="string" required>
+  사용자 이름입니다.
+  </ResponseField>
+
+  <ResponseField name="status" type="string">
+  사용자 상태입니다. `active`, `inactive`, `suspended` 중 하나입니다.
+  </ResponseField>
+
+  <ResponseField name="role" type="string">
+  사용자 역할입니다.
+  </ResponseField>
+
+  <ResponseField name="created_at" type="string" required>
+  사용자 생성 일시입니다. ISO 8601 형식입니다.
+  </ResponseField>
+
+  <ResponseField name="updated_at" type="string">
+  사용자 정보 수정 일시입니다. ISO 8601 형식입니다.
+  </ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="meta" type="object" required>
+페이지네이션 메타데이터입니다.
+
+<Expandable title="Meta 객체">
+  <ResponseField name="total" type="integer" required>
+  전체 사용자 수입니다.
+  </ResponseField>
+
+  <ResponseField name="page" type="integer" required>
+  현재 페이지 번호입니다.
+  </ResponseField>
+
+  <ResponseField name="per_page" type="integer" required>
+  페이지당 항목 수입니다.
+  </ResponseField>
+
+  <ResponseField name="total_pages" type="integer" required>
+  전체 페이지 수입니다.
+  </ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="links" type="object" required>
+페이지네이션 링크입니다.
+</ResponseField>
+
+## 에러 응답
+
+<ResponseExample>
+```json Error Response (400)
+{
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "잘못된 요청 파라미터입니다.",
+    "details": {
+      "field": "per_page",
+      "reason": "최대값은 100입니다."
+    }
+  }
+}
+```
+</ResponseExample>
+
+## 사용 예시
+
+### 활성 사용자만 조회
+
+```bash
+curl -X GET 'https://api.huny.dev/v1/users?status=active' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+### 이름순으로 정렬
+
+```bash
+curl -X GET 'https://api.huny.dev/v1/users?sort=name&order=asc' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+### 관리자 역할 필터링
+
+```bash
+curl -X GET 'https://api.huny.dev/v1/users?role=admin' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```

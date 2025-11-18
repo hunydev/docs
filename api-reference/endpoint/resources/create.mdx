@@ -1,0 +1,64 @@
+---
+title: '리소스 생성'
+openapi: 'POST /resources'
+---
+
+새로운 리소스를 시스템에 생성합니다.
+
+## 요청 예시
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.huny.dev/v1/resources' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "새 리소스",
+    "type": "document",
+    "description": "리소스에 대한 설명",
+    "metadata": {
+      "author": "홍길동",
+      "version": "1.0"
+    }
+  }'
+```
+</RequestExample>
+
+## 요청 본문
+
+<ParamField body="name" type="string" required>
+리소스 이름입니다.
+</ParamField>
+
+<ParamField body="type" type="string" required>
+리소스 타입입니다.
+</ParamField>
+
+<ParamField body="description" type="string">
+리소스에 대한 설명입니다.
+</ParamField>
+
+<ParamField body="metadata" type="object">
+추가 메타데이터입니다. 자유로운 형식의 키-값 쌍을 포함할 수 있습니다.
+</ParamField>
+
+## 성공 응답
+
+<ResponseExample>
+```json Success Response (201)
+{
+  "data": {
+    "id": "res_9876543210",
+    "name": "새 리소스",
+    "type": "document",
+    "description": "리소스에 대한 설명",
+    "metadata": {
+      "author": "홍길동",
+      "version": "1.0"
+    },
+    "created_at": "2024-01-15T11:00:00Z",
+    "updated_at": "2024-01-15T11:00:00Z"
+  }
+}
+```
+</ResponseExample>

@@ -1,0 +1,280 @@
+---
+title: '웹훅 가이드'
+description: 'Huny API 웹훅을 설정하고 사용하는 방법을 학습하세요'
+---
+
+## 웹훅이란?
+
+웹훅은 Huny API에서 발생하는 이벤트를 실시간으로 애플리케이션에 알려주는 메커니즘입니다. 폴링 대신 서버가 클라이언트에 이벤트를 푸시합니다.
+
+## 웹훅의 장점
+
+- **실시간 알림**: 이벤트 발생 즉시 알림을 받습니다
+- **효율적**: 불필요한 폴링 요청을 줄입니다
+- **속도 제한 절약**: API 속도 제한을 더 효율적으로 사용할 수 있습니다
+- **확장성**: 많은 수의 이벤트를 효율적으로 처리할 수 있습니다
+
+## 웹훅 설정
+
+### 1. 웹훅 엔드포인트 생성
+
+대시보드에서 웹훅을 설정하세요:
+
+<Steps>
+<Step title="대시보드 접속">
+  [Huny API 대시보드](https://api.huny.dev/dashboard)에 로그인하세요.
+</Step>
+
+<Step title="웹훅 생성">
+  1. "Webhooks" 섹션으로 이동하세요.
+  2. "새 웹훅 생성" 버튼을 클릭하세요.
+  3. 웹훅 URL을 입력하세요 (예: `https://your-app.com/webhooks/huny`)
+  4. 구독할 이벤트를 선택하세요.
+  5. 웹훅 시크릿을 복사해 안전하게 보관하세요.
+</Step>
+</Steps>
+
+### 2. 웹훅 엔드포인트 구현
+
+웹훅을 수신할 엔드포인트를 구현하세요:
+
+<CodeGroup>
+```javascript Node.js
+const express = require('express');
+const crypto = require('crypto');
+const app = express();
+
+app.use(express.json());
+
+app.post('/webhooks/huny', (req, res) => {
+  const signature = req.headers['x-huny-signature'];
+  const payload = JSON.stringify(req.body);
+  
+  // 서명 검증
+  if (!verifySignature(payload, signature, process.env.WEBHOOK_SECRET)) {
+    return res.status(401).send('Invalid signature');
+  }
+  
+  // 이벤트 처리
+  const { event, data } = req.body;
+  
+  switch (event) {
+    case 'user.created':
+      handleUserCreated(data);
+      break;
+    case 'user.updated':
+      handleUserUpdated(data);
+      break;
+    // ... 기타 이벤트 처리
+  }
+  
+  res.status(200).send('OK');
+});
+
+function verifySignature(payload, signature, secret) {
+  const hmac = crypto.createHmac('sha256', secret);
+  const digest = hmac.update(payload).digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(signature.replace('sha256=', '')),
+    Buffer.from(digest)
+  );
+}
+```
+
+```python Python
+from flask import Flask, request, jsonify
+import hmac
+import hashlib
+
+app = Flask(__name__)
+
+@app.route('/webhooks/huny', methods=['POST'])
+def webhook():
+    signature = request.headers.get('X-Huny-Signature')
+    payload = request.get_data()
+    
+    # 서명 검증
+    if not verify_signature(payload, signature, os.getenv('WEBHOOK_SECRET')):
+        return jsonify({'error': 'Invalid signature'}), 401
+    
+    # 이벤트 처리
+    data = request.json
+    event = data.get('event')
+    
+    if event == 'user.created':
+        handle_user_created(data['data'])
+    elif event == 'user.updated':
+        handle_user_updated(data['data'])
+    # ... 기타 이벤트 처리
+    
+    return jsonify({'status': 'ok'}), 200
+
+def verify_signature(payload, signature, secret):
+    expected = hmac.new(
+        secret.encode('utf-8'),
+        payload,
+        hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(
+        signature.replace('sha256=', ''),
+        expected
+    )
+```
+</CodeGroup>
+
+## 구독 가능한 이벤트
+
+### 사용자 이벤트
+
+- `user.created` - 새 사용자가 생성되었을 때
+- `user.updated` - 사용자 정보가 업데이트되었을 때
+- `user.deleted` - 사용자가 삭제되었을 때
+
+### 리소스 이벤트
+
+- `resource.created` - 새 리소스가 생성되었을 때
+- `resource.updated` - 리소스가 업데이트되었을 때
+- `resource.deleted` - 리소스가 삭제되었을 때
+
+## 웹훅 페이로드 형식
+
+모든 웹훅 요청은 다음 형식을 따릅니다:
+
+```json
+{
+  "event": "user.created",
+  "data": {
+    // 이벤트별 데이터
+  },
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
+## 서명 검증
+
+보안을 위해 모든 웹훅 요청은 서명이 포함됩니다. 반드시 서명을 검증하세요.
+
+### 서명 헤더
+
+```
+X-Huny-Signature: sha256=abc123...
+```
+
+### 검증 방법
+
+서명은 HMAC SHA256을 사용하여 생성됩니다:
+
+```
+signature = HMAC-SHA256(payload, webhook_secret)
+```
+
+<Tip>
+  서명 검증 없이 웹훅을 처리하면 보안 위험이 있습니다. 항상 서명을 검증하세요.
+</Tip>
+
+## 재시도 정책
+
+웹훅 전송이 실패하면 다음 간격으로 재시도합니다:
+
+1. 1분 후
+2. 5분 후
+3. 15분 후
+4. 1시간 후
+5. 6시간 후
+
+최대 5회까지 재시도하며, 그 이후에는 실패로 표시됩니다.
+
+### 재시도 처리
+
+웹훅 엔드포인트는 멱등성(idempotent)을 보장해야 합니다:
+
+```javascript
+// 멱등성 보장 예시
+const processedEvents = new Set();
+
+function handleWebhook(event, data) {
+  const eventId = `${event}-${data.id}-${data.updated_at}`;
+  
+  if (processedEvents.has(eventId)) {
+    console.log('이미 처리된 이벤트:', eventId);
+    return;
+  }
+  
+  // 이벤트 처리
+  processEvent(event, data);
+  
+  processedEvents.add(eventId);
+}
+```
+
+## 모범 사례
+
+### 빠른 응답
+
+웹훅 엔드포인트는 빠르게 응답하세요 (권장: 5초 이내):
+
+```javascript
+app.post('/webhooks/huny', async (req, res) => {
+  // 즉시 응답
+  res.status(200).send('OK');
+  
+  // 비동기로 처리
+  processWebhookAsync(req.body);
+});
+```
+
+### 에러 처리
+
+에러가 발생해도 적절히 처리하세요:
+
+```javascript
+try {
+  await processWebhook(data);
+} catch (error) {
+  console.error('웹훅 처리 실패:', error);
+  // 에러 추적 서비스로 전송
+  // 재시도를 위해 예외를 다시 던지지 않음
+}
+```
+
+### 로깅
+
+모든 웹훅 요청을 로깅하세요:
+
+```javascript
+app.post('/webhooks/huny', (req, res) => {
+  console.log('웹훅 수신:', {
+    event: req.body.event,
+    timestamp: req.body.timestamp,
+    signature: req.headers['x-huny-signature']
+  });
+  
+  // 처리...
+});
+```
+
+## 테스트
+
+웹훅을 테스트하려면 대시보드에서 테스트 이벤트를 전송할 수 있습니다:
+
+1. 대시보드의 웹훅 설정 페이지로 이동
+2. "테스트 이벤트 전송" 클릭
+3. 웹훅 엔드포인트에서 이벤트 수신 확인
+
+## 문제 해결
+
+### 웹훅이 수신되지 않음
+
+- 웹훅 URL이 공개적으로 접근 가능한지 확인
+- 방화벽 설정 확인
+- SSL 인증서 유효성 확인
+
+### 서명 검증 실패
+
+- 웹훅 시크릿이 올바른지 확인
+- 페이로드를 문자열로 변환할 때 인코딩 확인
+- 서명 알고리즘이 HMAC-SHA256인지 확인
+
+<Info>
+  웹훅 관련 문제가 있으신가요? [지원팀](mailto:support@huny.dev)에 문의하세요.
+</Info>
