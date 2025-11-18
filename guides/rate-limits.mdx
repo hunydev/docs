@@ -1,0 +1,169 @@
+---
+title: '속도 제한'
+description: 'Huny API 속도 제한 정책과 최적의 사용 방법을 확인하세요'
+---
+
+## 속도 제한 개요
+
+Huny API는 모든 요청에 속도 제한을 적용하여 서비스의 안정성과 공정한 사용을 보장합니다.
+
+## 기본 제한
+
+플랜별 속도 제한은 다음과 같습니다:
+
+| 플랜 | 분당 요청 수 | 시간당 요청 수 | 일일 요청 수 |
+|------|------------|--------------|------------|
+| 무료 | 60 | 3,600 | 86,400 |
+| 프로 | 300 | 18,000 | 432,000 |
+| 엔터프라이즈 | 1,000 | 60,000 | 1,440,000 |
+
+## 속도 제한 헤더
+
+모든 API 응답에는 속도 제한 정보가 헤더에 포함됩니다:
+
+```
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 45
+X-RateLimit-Reset: 1642234567
+```
+
+### 헤더 설명
+
+- `X-RateLimit-Limit`: 현재 시간 윈도우에서 허용되는 최대 요청 수
+- `X-RateLimit-Remaining`: 현재 시간 윈도우에서 남은 요청 수
+- `X-RateLimit-Reset`: 속도 제한이 리셋되는 Unix 타임스탬프
+
+## 속도 제한 초과 시
+
+속도 제한을 초과하면 `429 Too Many Requests` 상태 코드를 받게 됩니다:
+
+<ResponseExample>
+```json Rate Limit Exceeded
+{
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "속도 제한을 초과했습니다.",
+    "details": {
+      "limit": 60,
+      "remaining": 0,
+      "reset_at": "2024-01-15T11:00:00Z"
+    }
+  }
+}
+```
+</ResponseExample>
+
+## 속도 제한 처리 방법
+
+### 재시도 로직
+
+속도 제한에 도달했을 때는 `Retry-After` 헤더를 확인하고 적절히 대기하세요:
+
+<CodeGroup>
+```javascript JavaScript
+async function makeRequest(url, options, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    const response = await fetch(url, options);
+    
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('Retry-After');
+      const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, i) * 1000;
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      continue;
+    }
+    
+    return response;
+  }
+  throw new Error('Max retries exceeded');
+}
+```
+
+```python Python
+import time
+import requests
+
+def make_request(url, headers, max_retries=3):
+    for i in range(max_retries):
+        response = requests.get(url, headers=headers)
+        
+        if response.status_code == 429:
+            retry_after = response.headers.get('Retry-After')
+            wait_time = int(retry_after) if retry_after else (2 ** i)
+            time.sleep(wait_time)
+            continue
+        
+        return response
+    
+    raise Exception('Max retries exceeded')
+```
+</CodeGroup>
+
+### 요청 간격 조절
+
+요청을 일정한 간격으로 보내어 속도 제한을 피하세요:
+
+```javascript
+const delay = (60 * 1000) / 60; // 분당 60회 = 1초마다 1회
+
+async function makeRequests(urls) {
+  for (const url of urls) {
+    await fetch(url);
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
+}
+```
+
+## 모범 사례
+
+### 배치 요청 활용
+
+가능한 경우 여러 항목을 한 번에 처리하는 배치 엔드포인트를 사용하세요:
+
+```bash
+# 좋은 예: 배치 요청
+POST /v1/users/batch
+
+# 나쁜 예: 여러 개별 요청
+POST /v1/users (반복)
+```
+
+### 캐싱 활용
+
+자주 변경되지 않는 데이터는 캐싱하여 불필요한 요청을 줄이세요:
+
+```javascript
+const cache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5분
+
+async function getCachedUser(userId) {
+  const cached = cache.get(userId);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  
+  const data = await fetchUser(userId);
+  cache.set(userId, { data, timestamp: Date.now() });
+  return data;
+}
+```
+
+### 웹훅 사용
+
+폴링 대신 웹훅을 사용하여 데이터 변경사항을 실시간으로 받으세요:
+
+<Tip>
+  웹훅을 사용하면 불필요한 폴링 요청을 줄이고 속도 제한을 효율적으로 사용할 수 있습니다.
+</Tip>
+
+## 엔터프라이즈 플랜
+
+엔터프라이즈 플랜 고객은 다음 혜택을 받습니다:
+
+- 더 높은 속도 제한
+- 맞춤형 속도 제한 설정
+- 우선순위 지원
+- SLA 보장
+
+<Info>
+  엔터프라이즈 플랜에 대한 자세한 내용은 [지원팀](mailto:support@huny.dev)에 문의하세요.
+</Info>

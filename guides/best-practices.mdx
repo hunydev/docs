@@ -1,0 +1,297 @@
+---
+title: '모범 사례'
+description: 'Huny API를 안전하고 효율적으로 사용하기 위한 가이드라인'
+---
+
+## 보안 모범 사례
+
+### API 키 관리
+
+<Tip>
+  API 키를 안전하게 관리하세요:
+</Tip>
+
+- **환경 변수 사용**: API 키를 코드에 하드코딩하지 마세요
+- **버전 관리 제외**: `.gitignore`에 API 키가 포함된 파일 추가
+- **키 순환**: 정기적으로 API 키를 교체하세요
+- **최소 권한 원칙**: 필요한 최소한의 권한만 부여하세요
+
+```bash
+# .gitignore
+.env
+*.key
+config/secrets.json
+```
+
+### HTTPS 사용
+
+모든 API 요청은 HTTPS를 통해 전송하세요:
+
+<Warning>
+  HTTP를 통한 API 호출은 보안 위험이 있습니다. 프로덕션 환경에서는 반드시 HTTPS를 사용하세요.
+</Warning>
+
+### 요청 서명 (선택사항)
+
+고급 보안이 필요한 경우 요청 서명을 사용하세요:
+
+```javascript
+const crypto = require('crypto');
+
+function signRequest(method, path, body, secret) {
+  const timestamp = Date.now();
+  const message = `${method}${path}${timestamp}${JSON.stringify(body)}`;
+  const signature = crypto
+    .createHmac('sha256', secret)
+    .update(message)
+    .digest('hex');
+  
+  return { timestamp, signature };
+}
+```
+
+## 성능 최적화
+
+### 캐싱 활용
+
+자주 변경되지 않는 데이터는 캐싱하세요:
+
+```javascript
+const cache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5분
+
+async function getCachedData(key, fetchFn) {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  
+  const data = await fetchFn();
+  cache.set(key, { data, timestamp: Date.now() });
+  return data;
+}
+```
+
+### 배치 요청
+
+여러 항목을 처리할 때는 개별 요청 대신 배치 요청을 사용하세요:
+
+```bash
+# 나쁜 예: 여러 개별 요청
+POST /v1/users (반복)
+
+# 좋은 예: 배치 요청
+POST /v1/users/batch
+```
+
+### 페이지네이션 활용
+
+큰 데이터셋을 처리할 때는 페이지네이션을 사용하세요:
+
+```javascript
+async function getAllUsers() {
+  let page = 1;
+  let allUsers = [];
+  
+  while (true) {
+    const response = await fetch(
+      `https://api.huny.dev/v1/users?page=${page}&per_page=100`
+    );
+    const data = await response.json();
+    
+    allUsers = allUsers.concat(data.data);
+    
+    if (!data.links.next) break;
+    page++;
+  }
+  
+  return allUsers;
+}
+```
+
+## 에러 처리
+
+### 재시도 로직
+
+일시적인 오류에 대해서는 재시도 로직을 구현하세요:
+
+```javascript
+async function retryRequest(fn, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      
+      // 지수 백오프
+      const waitTime = Math.pow(2, i) * 1000;
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+  }
+}
+```
+
+### 에러 로깅
+
+에러를 적절히 로깅하고 모니터링하세요:
+
+```javascript
+function logError(error, context) {
+  console.error('API Error:', {
+    code: error.error?.code,
+    message: error.error?.message,
+    context: context,
+    timestamp: new Date().toISOString()
+  });
+  
+  // 모니터링 서비스로 전송
+  // sendToMonitoringService(error, context);
+}
+```
+
+## 코드 품질
+
+### 타입 안정성
+
+TypeScript를 사용하여 타입 안정성을 확보하세요:
+
+```typescript
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  status: 'active' | 'inactive' | 'suspended';
+  created_at: string;
+}
+
+async function getUser(id: string): Promise<User> {
+  const response = await fetch(`https://api.huny.dev/v1/users/${id}`);
+  return response.json();
+}
+```
+
+### 유효성 검사
+
+요청 데이터를 전송하기 전에 유효성을 검사하세요:
+
+```javascript
+function validateUserData(data) {
+  if (!data.email || !isValidEmail(data.email)) {
+    throw new Error('유효한 이메일 주소가 필요합니다.');
+  }
+  if (!data.name || data.name.length < 2) {
+    throw new Error('이름은 최소 2자 이상이어야 합니다.');
+  }
+  return true;
+}
+```
+
+## 속도 제한 관리
+
+### 요청 간격 조절
+
+속도 제한을 피하기 위해 요청 간격을 조절하세요:
+
+```javascript
+class RateLimiter {
+  constructor(requestsPerMinute) {
+    this.delay = (60 * 1000) / requestsPerMinute;
+    this.lastRequest = 0;
+  }
+  
+  async wait() {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequest;
+    
+    if (timeSinceLastRequest < this.delay) {
+      await new Promise(resolve => 
+        setTimeout(resolve, this.delay - timeSinceLastRequest)
+      );
+    }
+    
+    this.lastRequest = Date.now();
+  }
+}
+
+const limiter = new RateLimiter(60); // 분당 60회
+
+async function makeRequest(url) {
+  await limiter.wait();
+  return fetch(url);
+}
+```
+
+### 웹훅 활용
+
+폴링 대신 웹훅을 사용하여 속도 제한을 절약하세요:
+
+<Tip>
+  웹훅을 사용하면 불필요한 폴링 요청을 줄이고 속도 제한을 효율적으로 사용할 수 있습니다.
+</Tip>
+
+## 테스트
+
+### 단위 테스트
+
+API 호출을 모킹하여 단위 테스트를 작성하세요:
+
+```javascript
+// jest 예시
+jest.mock('node-fetch');
+
+test('사용자 생성', async () => {
+  fetch.mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      data: { id: 'usr_123', email: 'test@example.com' }
+    })
+  });
+  
+  const user = await createUser({ email: 'test@example.com' });
+  expect(user.id).toBe('usr_123');
+});
+```
+
+### 통합 테스트
+
+실제 API를 사용하는 통합 테스트도 작성하세요:
+
+```javascript
+test('실제 API 통합 테스트', async () => {
+  const user = await createUser({
+    email: 'test@example.com',
+    name: '테스트 사용자',
+    password: 'test123456'
+  });
+  
+  expect(user.email).toBe('test@example.com');
+  
+  // 정리
+  await deleteUser(user.id);
+});
+```
+
+## 문서화
+
+코드에 주석을 추가하고 API 사용법을 문서화하세요:
+
+```javascript
+/**
+ * 사용자를 생성합니다.
+ * @param {Object} userData - 사용자 데이터
+ * @param {string} userData.email - 이메일 주소 (필수)
+ * @param {string} userData.name - 사용자 이름 (필수)
+ * @param {string} userData.password - 비밀번호 (필수, 최소 8자)
+ * @returns {Promise<User>} 생성된 사용자 객체
+ * @throws {Error} API 에러 발생 시
+ */
+async function createUser(userData) {
+  // 구현...
+}
+```
+
+## 지원 및 커뮤니티
+
+<Tip>
+  질문이나 제안사항이 있으신가요? [지원팀](mailto:support@huny.dev)에 문의하거나 [문서 사이트](https://docs.huny.dev)에서 더 많은 정보를 확인하세요.
+</Tip>

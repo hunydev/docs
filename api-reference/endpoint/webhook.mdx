@@ -1,4 +1,142 @@
 ---
-title: 'New Plant'
-openapi: 'WEBHOOK /plant/webhook'
+title: '웹훅 이벤트'
+description: 'Huny API 웹훅을 통해 실시간 이벤트를 수신하세요'
 ---
+
+## 웹훅 개요
+
+Huny API는 웹훅을 통해 실시간 이벤트 알림을 제공합니다. 특정 이벤트가 발생하면 설정한 URL로 POST 요청을 보냅니다.
+
+## 웹훅 설정
+
+웹훅은 [대시보드](https://api.huny.dev/dashboard)에서 설정할 수 있습니다.
+
+<Steps>
+<Step title="웹훅 엔드포인트 생성">
+  1. 대시보드의 "Webhooks" 섹션으로 이동하세요.
+  2. "새 웹훅 생성" 버튼을 클릭하세요.
+  3. 웹훅 URL과 구독할 이벤트를 선택하세요.
+  4. 웹훅 시크릿을 안전하게 보관하세요.
+</Step>
+
+<Step title="이벤트 구독">
+  다음 이벤트를 구독할 수 있습니다:
+  - `user.created` - 새 사용자 생성
+  - `user.updated` - 사용자 정보 업데이트
+  - `user.deleted` - 사용자 삭제
+  - `resource.created` - 새 리소스 생성
+  - `resource.updated` - 리소스 업데이트
+  - `resource.deleted` - 리소스 삭제
+</Step>
+</Steps>
+
+## 웹훅 요청 형식
+
+웹훅 요청은 다음과 같은 형식으로 전송됩니다:
+
+### 사용자 이벤트
+
+<RequestExample>
+```json User Created Event
+{
+  "event": "user.created",
+  "data": {
+    "id": "usr_1234567890",
+    "email": "user@example.com",
+    "name": "홍길동",
+    "status": "active",
+    "role": "user",
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z"
+  },
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+</RequestExample>
+
+### 리소스 이벤트
+
+<RequestExample>
+```json Resource Created Event
+{
+  "event": "resource.created",
+  "data": {
+    "id": "res_1234567890",
+    "name": "새 리소스",
+    "type": "document",
+    "description": "리소스 설명",
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z"
+  },
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+</RequestExample>
+
+## 웹훅 서명 검증
+
+보안을 위해 웹훅 요청에는 서명이 포함됩니다. 요청의 유효성을 검증하세요.
+
+### 서명 헤더
+
+```
+X-Huny-Signature: sha256=abc123...
+```
+
+### 검증 예시
+
+<CodeGroup>
+```javascript Node.js
+const crypto = require('crypto');
+
+function verifyWebhookSignature(payload, signature, secret) {
+  const hmac = crypto.createHmac('sha256', secret);
+  const digest = hmac.update(payload).digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(signature.replace('sha256=', '')),
+    Buffer.from(digest)
+  );
+}
+```
+
+```python Python
+import hmac
+import hashlib
+
+def verify_webhook_signature(payload, signature, secret):
+    expected_signature = hmac.new(
+        secret.encode('utf-8'),
+        payload.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(
+        signature.replace('sha256=', ''),
+        expected_signature
+    )
+```
+</CodeGroup>
+
+## 응답 요구사항
+
+웹훅 엔드포인트는 `200 OK` 상태 코드를 반환해야 합니다. 그렇지 않으면 재시도가 발생할 수 있습니다.
+
+## 재시도 정책
+
+웹훅 전송이 실패하면 다음 간격으로 재시도합니다:
+- 1분 후
+- 5분 후
+- 15분 후
+- 1시간 후
+- 6시간 후
+
+최대 5회까지 재시도합니다.
+
+<Tip>
+  웹훅 엔드포인트는 빠르게 응답하도록 구현하세요. 처리 시간이 오래 걸리는 작업은 비동기로 처리하는 것을 권장합니다.
+</Tip>
+
+<Warning>
+  웹훅 시크릿을 안전하게 보관하세요. 서명 검증 없이 웹훅을 처리하면 보안 위험이 있습니다.
+</Warning>
+
+자세한 내용은 [웹훅 가이드](/guides/webhooks)를 참고하세요.

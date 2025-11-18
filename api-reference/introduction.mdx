@@ -1,33 +1,233 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: 'API 레퍼런스 개요'
+description: 'Huny API의 모든 엔드포인트와 사용 방법을 확인하세요'
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+## Huny API 소개
 
-## Welcome
-
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
+Huny API는 RESTful 아키텍처를 따르는 현대적인 웹 서비스 API입니다. 모든 엔드포인트는 JSON 형식으로 요청과 응답을 처리하며, 표준 HTTP 메서드와 상태 코드를 사용합니다.
 
 <Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
+  title="OpenAPI 스펙 확인"
+  icon="file-code"
+  href="/api-reference/openapi.json"
 >
-  View the OpenAPI specification file
+  전체 OpenAPI 3.1 스펙을 확인하세요
 </Card>
 
-## Authentication
+## 기본 정보
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+### Base URL
+
+모든 API 요청은 다음 기본 URL을 사용합니다:
+
+```
+https://api.huny.dev/v1
+```
+
+### API 버전
+
+현재 API 버전은 **v1**입니다. 버전 정보는 URL 경로에 포함됩니다.
+
+<Info>
+  향후 새로운 버전이 출시되면 기존 버전도 계속 지원됩니다. 버전 변경 사항은 [블로그](https://blog.huny.dev)에서 공지됩니다.
+</Info>
+
+## 인증
+
+모든 API 엔드포인트는 Bearer 토큰 인증을 사용합니다. 요청 헤더에 API 키를 포함해야 합니다.
+
+### 인증 헤더 형식
+
+```http
+Authorization: Bearer YOUR_API_KEY
+```
+
+### 인증 예시
+
+<CodeGroup>
+```bash cURL
+curl -X GET 'https://api.huny.dev/v1/users' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.huny.dev/v1/users', {
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY'
+  }
+});
+```
+
+```python Python
+import requests
+
+headers = {
+    'Authorization': 'Bearer YOUR_API_KEY'
+}
+response = requests.get('https://api.huny.dev/v1/users', headers=headers)
+```
+</CodeGroup>
+
+<Warning>
+  API 키를 안전하게 보관하세요. 공개 저장소나 클라이언트 사이드 코드에 노출하지 마세요.
+</Warning>
+
+자세한 인증 가이드는 [인증 문서](/api-reference/authentication)를 참고하세요.
+
+## 요청 형식
+
+### Content-Type
+
+모든 요청은 `application/json` Content-Type을 사용합니다.
+
+### 요청 본문 예시
 
 ```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
+{
+  "email": "user@example.com",
+  "name": "홍길동",
+  "password": "secure_password"
+}
 ```
+
+## 응답 형식
+
+### 성공 응답
+
+성공적인 요청은 HTTP 상태 코드 `200`, `201`, `204` 등을 반환합니다. 응답 본문은 JSON 형식입니다.
+
+```json
+{
+  "data": {
+    "id": "usr_1234567890",
+    "email": "user@example.com",
+    "name": "홍길동",
+    "created_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+### 에러 응답
+
+에러가 발생하면 표준화된 에러 형식을 반환합니다.
+
+```json
+{
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "요청 형식이 올바르지 않습니다.",
+    "details": {
+      "field": "email",
+      "reason": "유효한 이메일 주소가 아닙니다."
+    }
+  }
+}
+```
+
+자세한 에러 처리 방법은 [에러 처리 가이드](/guides/error-handling)를 참고하세요.
+
+## HTTP 메서드
+
+Huny API는 표준 HTTP 메서드를 사용합니다:
+
+- **GET**: 리소스 조회
+- **POST**: 새 리소스 생성
+- **PUT**: 리소스 전체 업데이트
+- **PATCH**: 리소스 부분 업데이트
+- **DELETE**: 리소스 삭제
+
+## 속도 제한
+
+API 사용에는 속도 제한이 적용됩니다. 기본 제한은 다음과 같습니다:
+
+- **무료 플랜**: 분당 60회 요청
+- **프로 플랜**: 분당 300회 요청
+- **엔터프라이즈 플랜**: 분당 1000회 요청
+
+속도 제한 정보는 응답 헤더에 포함됩니다:
+
+```
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 45
+X-RateLimit-Reset: 1642234567
+```
+
+자세한 내용은 [속도 제한 가이드](/guides/rate-limits)를 확인하세요.
+
+## 페이지네이션
+
+목록을 반환하는 엔드포인트는 페이지네이션을 지원합니다.
+
+### 쿼리 파라미터
+
+- `page`: 페이지 번호 (기본값: 1)
+- `per_page`: 페이지당 항목 수 (기본값: 20, 최대: 100)
+
+### 응답 형식
+
+```json
+{
+  "data": [...],
+  "meta": {
+    "total": 150,
+    "page": 1,
+    "per_page": 20,
+    "total_pages": 8
+  },
+  "links": {
+    "first": "https://api.huny.dev/v1/users?page=1",
+    "last": "https://api.huny.dev/v1/users?page=8",
+    "prev": null,
+    "next": "https://api.huny.dev/v1/users?page=2"
+  }
+}
+```
+
+## 필터링 및 정렬
+
+많은 엔드포인트에서 필터링과 정렬을 지원합니다.
+
+### 필터링 예시
+
+```
+GET /v1/users?status=active&role=admin
+```
+
+### 정렬 예시
+
+```
+GET /v1/users?sort=created_at&order=desc
+```
+
+## 웹훅
+
+실시간 이벤트 알림을 받으려면 웹훅을 설정하세요. 자세한 내용은 [웹훅 가이드](/guides/webhooks)를 참고하세요.
+
+## API 엔드포인트 목록
+
+### 사용자 관리
+
+- `GET /users` - 사용자 목록 조회
+- `POST /users` - 새 사용자 생성
+- `GET /users/{id}` - 특정 사용자 조회
+- `PUT /users/{id}` - 사용자 정보 업데이트
+- `DELETE /users/{id}` - 사용자 삭제
+
+### 리소스 관리
+
+- `GET /resources` - 리소스 목록 조회
+- `POST /resources` - 새 리소스 생성
+- `GET /resources/{id}` - 특정 리소스 조회
+- `PUT /resources/{id}` - 리소스 업데이트
+- `DELETE /resources/{id}` - 리소스 삭제
+
+### 웹훅
+
+- `POST /webhooks` - 웹훅 이벤트 수신
+
+## 지원 및 문의
+
+<Tip>
+  질문이나 문제가 있으신가요? [지원팀](mailto:support@huny.dev)에 문의하거나 [문서 사이트](https://docs.huny.dev)에서 더 많은 정보를 확인하세요.
+</Tip>

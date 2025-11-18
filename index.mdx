@@ -1,97 +1,130 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Huny API 소개"
+description: "강력하고 안정적인 RESTful API로 애플리케이션을 구축하세요"
 ---
 
-## Setting up
+## Huny API에 오신 것을 환영합니다
 
-Get your documentation site up and running in minutes.
+Huny API는 현대적인 웹 애플리케이션과 모바일 앱을 위한 강력하고 안정적인 RESTful API 서비스입니다. 간단한 인증, 빠른 응답 시간, 그리고 포괄적인 문서화를 통해 개발자 경험을 최우선으로 합니다.
 
 <Card
-  title="Start here"
+  title="빠른 시작 가이드"
   icon="rocket"
   href="/quickstart"
   horizontal
 >
-  Follow our three step quickstart guide.
+  5분 안에 첫 API 호출을 완료하세요. API 키 발급부터 첫 요청까지 단계별로 안내합니다.
 </Card>
 
-## Make it yours
+## 주요 기능
 
-Design a docs site that looks great and empowers your users.
+Huny API의 핵심 기능을 확인하세요.
 
 <Columns cols={2}>
   <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
+    title="간편한 인증"
+    icon="key"
+    href="/api-reference/authentication"
   >
-    Edit your docs locally and preview them in real time.
+    Bearer 토큰 기반의 간단하고 안전한 인증 시스템을 제공합니다.
   </Card>
   <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
+    title="RESTful 설계"
+    icon="code"
     href="/api-reference/introduction"
   >
-    Auto-generate API documentation from OpenAPI specifications.
+    표준 REST 원칙을 따르는 직관적이고 예측 가능한 API 엔드포인트입니다.
+  </Card>
+  <Card
+    title="실시간 웹훅"
+    icon="bell"
+    href="/guides/webhooks"
+  >
+    이벤트 기반 웹훅을 통해 실시간으로 데이터 변경사항을 수신하세요.
+  </Card>
+  <Card
+    title="상세한 문서화"
+    icon="book"
+    href="/api-reference/introduction"
+  >
+    모든 엔드포인트에 대한 상세한 예제와 설명을 제공합니다.
   </Card>
 </Columns>
 
-## Create beautiful pages
+## 시작하기
 
-Everything you need to create world-class documentation.
+<Steps>
+<Step title="API 키 발급">
+  대시보드에서 새 API 키를 생성하세요. 각 키는 고유한 권한과 속도 제한을 가집니다.
+  
+  <Check>
+  API 키는 안전하게 보관하고 절대 공개 저장소에 커밋하지 마세요.
+  </Check>
+</Step>
+
+<Step title="첫 API 호출">
+  인증 헤더에 Bearer 토큰을 포함하여 첫 요청을 보내보세요.
+  
+  ```bash
+  curl -X GET 'https://api.huny.dev/v1/users' \
+    -H 'Authorization: Bearer YOUR_API_KEY'
+  ```
+</Step>
+
+<Step title="응답 확인">
+  JSON 형식의 구조화된 응답을 받게 됩니다. 에러 처리와 재시도 로직을 구현하세요.
+</Step>
+</Steps>
+
+## API 엔드포인트
+
+주요 API 엔드포인트를 탐색하세요.
 
 <Columns cols={2}>
   <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
+    title="사용자 관리"
+    icon="users"
+    href="/api-reference/endpoint/users/get"
   >
-    Use MDX to style your docs pages.
+    사용자 생성, 조회, 수정, 삭제를 위한 완전한 CRUD API를 제공합니다.
   </Card>
   <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
+    title="리소스 관리"
+    icon="folder"
+    href="/api-reference/endpoint/resources/get"
   >
-    Add sample code to demonstrate how to use your product.
+    애플리케이션 리소스를 효율적으로 관리할 수 있는 API입니다.
   </Card>
   <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
+    title="웹훅 설정"
+    icon="webhook"
+    href="/api-reference/endpoint/webhook"
   >
-    Display images and other media.
+    실시간 이벤트 알림을 위한 웹훅 엔드포인트를 설정하세요.
   </Card>
   <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
+    title="에러 처리"
+    icon="triangle-exclamation"
+    href="/guides/error-handling"
   >
-    Write once and reuse across your docs.
+    표준화된 에러 응답 형식과 처리 방법을 학습하세요.
   </Card>
 </Columns>
 
-## Need inspiration?
+## 개발자 리소스
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
+<CardGroup cols={2}>
+<Card title="속도 제한" icon="clock" href="/guides/rate-limits">
+  API 속도 제한 정책과 최적의 사용 방법을 확인하세요.
 </Card>
+
+<Card title="모범 사례" icon="star" href="/guides/best-practices">
+  안전하고 효율적인 API 사용을 위한 가이드라인을 참고하세요.
+</Card>
+</CardGroup>
+
+## 지원 및 커뮤니티
+
+<Info>
+  질문이 있으신가요? [지원팀](mailto:support@huny.dev)에 문의하거나 [블로그](https://blog.huny.dev)에서 최신 업데이트를 확인하세요.
+</Info>

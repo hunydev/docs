@@ -1,0 +1,262 @@
+---
+title: '에러 처리'
+description: 'Huny API 에러 응답 형식과 처리 방법을 학습하세요'
+---
+
+## 에러 응답 형식
+
+Huny API는 표준화된 에러 응답 형식을 사용합니다. 모든 에러는 다음 구조를 따릅니다:
+
+```json
+{
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "사용자 친화적인 에러 메시지",
+    "details": {
+      // 추가 상세 정보
+    }
+  }
+}
+```
+
+## HTTP 상태 코드
+
+Huny API는 표준 HTTP 상태 코드를 사용합니다:
+
+| 상태 코드 | 의미 | 설명 |
+|----------|------|------|
+| 200 | OK | 요청 성공 |
+| 201 | Created | 리소스 생성 성공 |
+| 204 | No Content | 요청 성공 (응답 본문 없음) |
+| 400 | Bad Request | 잘못된 요청 |
+| 401 | Unauthorized | 인증 실패 |
+| 403 | Forbidden | 권한 부족 |
+| 404 | Not Found | 리소스를 찾을 수 없음 |
+| 409 | Conflict | 리소스 충돌 (예: 중복) |
+| 422 | Unprocessable Entity | 요청 형식은 올바르지만 처리할 수 없음 |
+| 429 | Too Many Requests | 속도 제한 초과 |
+| 500 | Internal Server Error | 서버 내부 오류 |
+| 503 | Service Unavailable | 서비스 일시 중단 |
+
+## 에러 코드
+
+### 인증 관련 에러
+
+<ResponseExample>
+```json Unauthorized (401)
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "유효하지 않은 API 키입니다.",
+    "details": {
+      "reason": "API 키가 만료되었거나 존재하지 않습니다."
+    }
+  }
+}
+```
+</ResponseExample>
+
+### 검증 에러
+
+<ResponseExample>
+```json Validation Error (400)
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "요청 데이터 검증에 실패했습니다.",
+    "details": {
+      "field": "email",
+      "reason": "유효한 이메일 주소가 아닙니다.",
+      "value": "invalid-email"
+    }
+  }
+}
+```
+</ResponseExample>
+
+### 리소스 없음
+
+<ResponseExample>
+```json Not Found (404)
+{
+  "error": {
+    "code": "RESOURCE_NOT_FOUND",
+    "message": "요청한 리소스를 찾을 수 없습니다.",
+    "details": {
+      "resource": "user",
+      "id": "usr_1234567890"
+    }
+  }
+}
+```
+</ResponseExample>
+
+### 중복 리소스
+
+<ResponseExample>
+```json Conflict (409)
+{
+  "error": {
+    "code": "DUPLICATE_EMAIL",
+    "message": "이미 등록된 이메일 주소입니다.",
+    "details": {
+      "field": "email",
+      "value": "user@example.com"
+    }
+  }
+}
+```
+</ResponseExample>
+
+### 속도 제한
+
+<ResponseExample>
+```json Rate Limit (429)
+{
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "속도 제한을 초과했습니다.",
+    "details": {
+      "limit": 60,
+      "remaining": 0,
+      "reset_at": "2024-01-15T11:00:00Z"
+    }
+  }
+}
+```
+</ResponseExample>
+
+## 에러 처리 예시
+
+### JavaScript
+
+```javascript
+async function handleApiRequest(url, options) {
+  try {
+    const response = await fetch(url, options);
+    
+    if (!response.ok) {
+      const error = await response.json();
+      
+      switch (response.status) {
+        case 401:
+          // 인증 에러 - API 키 확인 필요
+          console.error('인증 실패:', error.error.message);
+          break;
+        case 404:
+          // 리소스 없음
+          console.error('리소스를 찾을 수 없습니다:', error.error.details);
+          break;
+        case 429:
+          // 속도 제한 - 재시도 필요
+          const retryAfter = response.headers.get('Retry-After');
+          console.warn('속도 제한 초과. 재시도:', retryAfter);
+          break;
+        default:
+          console.error('API 에러:', error.error);
+      }
+      
+      throw new Error(error.error.message);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('요청 실패:', error);
+    throw error;
+  }
+}
+```
+
+### Python
+
+```python
+import requests
+from requests.exceptions import RequestException
+
+def handle_api_request(url, headers):
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 401:
+            error_data = e.response.json()
+            print(f"인증 실패: {error_data['error']['message']}")
+        elif e.response.status_code == 429:
+            retry_after = e.response.headers.get('Retry-After')
+            print(f"속도 제한 초과. 재시도: {retry_after}초 후")
+        else:
+            error_data = e.response.json()
+            print(f"API 에러: {error_data['error']['message']}")
+        raise
+    except RequestException as e:
+        print(f"요청 실패: {e}")
+        raise
+```
+
+## 재시도 전략
+
+### 지수 백오프
+
+에러 발생 시 지수 백오프를 사용하여 재시도하세요:
+
+```javascript
+async function retryWithBackoff(fn, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      
+      const waitTime = Math.pow(2, i) * 1000; // 1초, 2초, 4초...
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+  }
+}
+```
+
+### 재시도 가능한 에러
+
+다음 에러는 재시도해도 안전합니다:
+
+- `429 Too Many Requests` - 속도 제한
+- `500 Internal Server Error` - 서버 오류
+- `503 Service Unavailable` - 서비스 일시 중단
+- 네트워크 오류
+
+### 재시도하지 말아야 할 에러
+
+다음 에러는 재시도해도 동일한 결과가 나옵니다:
+
+- `400 Bad Request` - 잘못된 요청
+- `401 Unauthorized` - 인증 실패
+- `403 Forbidden` - 권한 부족
+- `404 Not Found` - 리소스 없음
+- `409 Conflict` - 리소스 충돌
+
+## 로깅 및 모니터링
+
+에러를 로깅하고 모니터링하여 문제를 조기에 발견하세요:
+
+```javascript
+function logError(error, context) {
+  console.error('API Error:', {
+    code: error.error?.code,
+    message: error.error?.message,
+    details: error.error?.details,
+    context: context,
+    timestamp: new Date().toISOString()
+  });
+  
+  // 모니터링 서비스로 전송
+  // sendToMonitoringService(error, context);
+}
+```
+
+<Tip>
+  프로덕션 환경에서는 에러 추적 서비스(Sentry, Rollbar 등)를 사용하여 에러를 모니터링하는 것을 권장합니다.
+</Tip>
+
+## 지원
+
+에러 처리에 대한 질문이 있으신가요? [지원팀](mailto:support@huny.dev)에 문의하세요.
