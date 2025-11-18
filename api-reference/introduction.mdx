@@ -1,33 +1,92 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: 'API 소개'
+description: 'Huny Reliability API 전반의 인증, 베이스 URL, 속도 제한, 환경 정보를 확인하세요.'
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+## 개요
 
-## Welcome
-
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
+- **베이스 URL**: `https://api.huny.dev/v1`
+- **문서**: `docs.huny.dev`
+- **블로그 / 변경 로그**: `blog.huny.dev`
+- **상태 페이지**: `status.huny.dev`
 
 <Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
+  title="OpenAPI 3.1 스키마"
+  icon="code"
+  href="https://docs.huny.dev/api-reference/openapi.json"
 >
-  View the OpenAPI specification file
+  `/api-reference/openapi.json` 파일은 자동으로 최신 스키마를 노출합니다.
 </Card>
 
-## Authentication
+## 인증
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+<ParamField header="Authorization" type="string" required>
+`Bearer hun_live_xxx` 또는 `Bearer hun_test_xxx` 포맷을 사용합니다.
+</ParamField>
 
-```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
+<ParamField header="Huny-Workspace" type="string" required>
+워크스페이스 스코프를 지정합니다. 하나의 API 키가 여러 워크스페이스에 접근할 수 있으므로 필수입니다.
+</ParamField>
+
+```bash
+curl https://api.huny.dev/v1/streams?workspace_id=wrk_4f93e2 \
+  -H "Authorization: Bearer hun_live_abc123" \
+  -H "Huny-Workspace: wrk_4f93e2"
 ```
+
+<Warning>키 분실 혹은 탈취가 의심되면 Dashboard > Security 에서 즉시 비활성화하고 새 키를 배포하세요.</Warning>
+
+## 속도 제한
+
+- 기본 한도는 워크스페이스당 **초당 200 요청**  
+- `429 Too Many Requests` 응답 시 `Retry-After` 헤더(밀리초)를 참고해 재시도  
+- Enterprise 플랜은 스트림별 맞춤 한도를 지원합니다. `support@huny.dev`로 문의하세요.
+
+<AccordionGroup>
+  <Accordion title="Burst 모드">
+    짧은 시간 동안 스파이크가 예상되면 `X-Huny-Burst: true` 헤더를 추가해 일시적 버스트 버킷을 활성화할 수 있습니다. (베타)
+  </Accordion>
+  <Accordion title="백필 작업">
+    장시간 실행되는 백필은 `/records` 대신 `/records/bulk` (비공개) 엔드포인트 사용을 권장합니다. 계정 담당자에게 연락해 활성화하세요.
+  </Accordion>
+</AccordionGroup>
+
+## 환경
+
+<Tabs>
+  <Tab title="Production">
+    SLA 99.95%, 3개 리전 (us-east-1, eu-west-1, ap-northeast-2). 실데이터만 허용됩니다.
+  </Tab>
+  <Tab title="Sandbox">
+    동일한 API, 쓰로틀 10 rps. `hun_test_` 키 사용. 지연 임곗값이 더 낮게 설정되어 빠른 피드백을 제공합니다.
+  </Tab>
+</Tabs>
+
+## 핵심 엔드포인트
+
+<CardGroup cols={2}>
+  <Card title="스트림 조회" icon="waveform" href="/api-reference/endpoint/get">
+    `GET /streams` 로 모니터링 중인 스트림과 임곗값을 가져옵니다.
+  </Card>
+  <Card title="레코드 수집" icon="circle-plus" href="/api-reference/endpoint/create">
+    `POST /records` 로 이벤트를 전송하고 스키마 검증 결과를 받습니다.
+  </Card>
+  <Card title="레코드 삭제" icon="trash" href="/api-reference/endpoint/delete">
+    잘못 전송된 레코드를 취소하거나 감사를 위해 이력을 남깁니다.
+  </Card>
+  <Card title="웹훅 테스트" icon="bolt" href="/api-reference/endpoint/webhook">
+    자동화 채널을 1초 안에 검증합니다.
+  </Card>
+</CardGroup>
+
+## 상태 코드
+
+| 코드 | 의미 | 복구 가이드 |
+| ---- | ---- | ----------- |
+| 200/201 | 요청 성공 | 응답 본문에 결과 포함 |
+| 204 | 삭제 완료 | 추가 본문 없음 |
+| 400 | 스키마/정책 위반 | `correlation_id`를 로그에 남기고 문제 필드를 수정 |
+| 401/403 | 인증 실패 | API 키, 워크스페이스 헤더 확인 |
+| 429 | 속도 제한 초과 | `Retry-After` 후 재시도, 필요하면 한도 상향 요청 |
+
+<Check>각 응답에는 `correlation_id`가 포함되어 있으므로 지원팀에 문의 시 함께 제공해 주세요.</Check>

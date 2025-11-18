@@ -1,4 +1,12 @@
-One of the core principles of software development is DRY (Don't Repeat
-Yourself). This is a principle that applies to documentation as
-well. If you find yourself repeating the same content in multiple places, you
-should consider creating a custom snippet to keep your content in sync.
+<Info>
+  Huny 문서 전반에서 반복해서 등장하는 **표준 인증 헤더**와 **워크스페이스 컨텍스트**를 한 번만 정의하고 재사용하세요.
+</Info>
+
+```http Standard headers
+Authorization: Bearer hun_live_xxxxxx
+Huny-Workspace: wrk_4f93e2
+Idempotency-Key: evt_{uuid}
+Content-Type: application/json
+```
+
+<Tip>`/snippets/snippet-intro.mdx` 를 다른 페이지에 임포트하면 위 헤더 블록을 그대로 표시할 수 있습니다.</Tip>

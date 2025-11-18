@@ -1,94 +1,103 @@
 ---
-title: 'Development'
-description: 'Preview changes locally to update your docs'
+title: '개발 환경'
+description: '로컬 또는 스테이징에서 Huny API 통합을 검증하고 관찰하는 방법'
 ---
 
 <Info>
-  **Prerequisites**:
-  - Node.js version 19 or higher
-  - A docs repository with a `docs.json` file
+  **필수 조건**
+  - Node.js 18+ 또는 Python 3.9+
+  - `hun_live_` 혹은 `hun_test_` API 키
+  - Huny CLI (`npx huny` 로 실행 가능) 혹은 HTTP 클라이언트
 </Info>
 
-Follow these steps to install and run Mintlify on your operating system.
+## SDK와 CLI 설치
 
 <Steps>
-<Step title="Install the Mintlify CLI">
-
-```bash
-npm i -g mint
-```
-</Step>
-
-<Step title="Preview locally">
-
-Navigate to your docs directory where your `docs.json` file is located, and run the following command:
-
-```bash
-mint dev
-```
-
-A local preview of your documentation will be available at `http://localhost:3000`.
-
-</Step>
+  <Step title="Huny CLI">
+    CLI는 스트림 정의 확인, 재전송, 로컬 리플레이 모드를 제공합니다.
+    ```bash
+    npm i -g @huny/cli
+    huny login --api-key $HUNY_API_KEY
+    ```
+  </Step>
+  <Step title="JavaScript SDK">
+    ```bash
+    npm install @huny/sdk
+    ```
+    ```javascript
+    import { HunyClient } from '@huny/sdk';
+    
+    const client = new HunyClient({
+      apiKey: process.env.HUNY_API_KEY,
+      workspaceId: process.env.HUNY_WORKSPACE
+    });
+    ```
+  </Step>
+  <Step title="Python SDK">
+    ```bash
+    pip install huny-sdk
+    ```
+    ```python
+    from huny import HunyClient
+    
+    client = HunyClient(
+        api_key=os.getenv("HUNY_API_KEY"),
+        workspace_id=os.getenv("HUNY_WORKSPACE")
+    )
+    ```
+  </Step>
 </Steps>
 
-## Custom ports
+## 로컬 리플레이 모드
 
-By default, Mintlify uses port 3000. You can customize the port Mintlify runs on by using the `--port` flag. For example, to run Mintlify on port 3333, use this command:
-
-```bash
-mint dev --port 3333
-```
-
-If you attempt to run Mintlify on a port that's already in use, it will use the next available port:
-
-```md
-Port 3000 is already in use. Trying 3001 instead.
-```
-
-## Mintlify versions
-
-Please note that each CLI release is associated with a specific version of Mintlify. If your local preview does not align with the production version, please update the CLI:
+`huny replay` 명령으로 프로덕션에서 수집한 이벤트를 로컬 서비스에 재생하여 검증할 수 있습니다.
 
 ```bash
-npm mint update
+huny replay \
+  --stream-id strm_92bx12 \
+  --sample-window "last_15m" \
+  --target-url http://localhost:4000/hooks/huny
 ```
 
-## Validating links
+<Tip>리플레이가 끝나면 CLI가 지연, 변환 실패, 스키마 위반 건수를 요약해 줍니다.</Tip>
 
-The CLI can assist with validating links in your documentation. To identify any broken links, use the following command:
+## 메트릭 스트리밍
 
-```bash
-mint broken-links
+`/v1/streams/{id}/metrics` 엔드포인트 혹은 CLI `huny metrics tail` 명령으로 실시간 지표를 확인할 수 있습니다.
+
+<CodeGroup>
+```bash curl
+curl "https://api.huny.dev/v1/streams/strm_92bx12/metrics?window=5m" \
+  -H "Authorization: Bearer $HUNY_API_KEY" \
+  -H "Huny-Workspace: $HUNY_WORKSPACE"
 ```
 
-## Deployment
-
-If the deployment is successful, you should see the following:
+```bash CLI
+huny metrics tail --stream-id strm_92bx12 --window 5m
+```
+</CodeGroup>
 
 <Frame>
-  <img src="/images/checks-passed.png" alt="Screenshot of a deployment confirmation message that says All checks have passed." style={{ borderRadius: '0.5rem' }} />
+  <img src="/images/checks-passed.png" alt="Huny CLI 가 모든 체크를 통과했음을 보여주는 예시" style={{ borderRadius: '0.5rem' }} />
 </Frame>
 
-## Code formatting
+## 배포 체크리스트
 
-We suggest using extensions on your IDE to recognize and format MDX. If you're a VSCode user, consider the [MDX VSCode extension](https://marketplace.visualstudio.com/items?itemName=unifiedjs.vscode-mdx) for syntax highlighting, and [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) for code formatting.
+- `Huny-Workspace` 헤더가 누락되면 모든 요청이 400으로 거절됩니다.
+- `idempotency_key`를 설정하면 동일 레코드가 여러 번 전달되더라도 한 번만 처리됩니다.
+- 장시간 실행되는 배치 작업은 60초마다 `ping` 이벤트를 전송하여 지연 탐지를 보조할 수 있습니다.
 
-## Troubleshooting
+## 트러블슈팅
 
 <AccordionGroup>
-  <Accordion title='Error: Could not load the "sharp" module using the darwin-arm64 runtime'>
-
-    This may be due to an outdated version of node. Try the following:
-    1. Remove the currently-installed version of the CLI: `npm remove -g mint`
-    2. Upgrade to Node v19 or higher.
-    3. Reinstall the CLI: `npm i -g mint`
+  <Accordion title="401 Unauthorized">
+    - API 키가 비활성화 되었거나 잘못된 워크스페이스를 참조하고 있을 수 있습니다.  
+    - CLI에서 `huny whoami` 로 현재 컨텍스트를 확인한 뒤 다시 로그인하세요.
   </Accordion>
-
-  <Accordion title="Issue: Encountering an unknown error">
-  
-    Solution: Go to the root of your device and delete the `~/.mintlify` folder. Then run `mint dev` again.
+  <Accordion title="Latency breach alerts during tests">
+    샌드박스에서는 기본 지연 임곗값이 2초입니다. `thresholds.latency_ms` 값을 더 큰 수로 변경하거나 `mute=true` 파라미터로 테스트 세션을 시작하세요.
+  </Accordion>
+  <Accordion title="Webhook delivery mismatch">
+    대상 엔드포인트가 200 이외의 응답을 반환하면 Huny가 최대 24시간 동안 지수 백오프로 재시도합니다. `huny webhook logs --id wbk_xxx` 로 최근 100건을 즉시 확인하세요.
   </Accordion>
 </AccordionGroup>
-
-Curious about what changed in the latest CLI version? Check out the [CLI changelog](https://www.npmjs.com/package/mintlify?activeTab=versions).

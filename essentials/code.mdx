@@ -1,35 +1,140 @@
 ---
-title: 'Code blocks'
-description: 'Display inline code and code blocks'
+title: '코드 예제 모음'
+description: '가장 많이 사용하는 Huny API 패턴을 언어별로 정리했습니다.'
 icon: 'code'
 ---
 
-## Inline code
+## 기본 REST 호출 템플릿
 
-To denote a `word` or `phrase` as code, enclose it in backticks (`).
-
+<CodeGroup>
+```bash cURL
+curl -X POST "https://api.huny.dev/v1/records" \
+  -H "Authorization: Bearer $HUNY_API_KEY" \
+  -H "Huny-Workspace: $HUNY_WORKSPACE" \
+  -H "Idempotency-Key: evt_{{uuid}}" \
+  -H "Content-Type: application/json" \
+  -d @payload.json
 ```
-To denote a `word` or `phrase` as code, enclose it in backticks (`).
+
+```javascript Node.js
+import { HunyClient } from '@huny/sdk';
+
+const client = new HunyClient({
+  apiKey: process.env.HUNY_API_KEY,
+  workspaceId: process.env.HUNY_WORKSPACE
+});
+
+await client.records.create({
+  streamId: 'strm_92bx12',
+  payload: { /* ... */ }
+});
 ```
 
-## Code blocks
+```python Python
+from huny import HunyClient
 
-Use [fenced code blocks](https://www.markdownguide.org/extended-syntax/#fenced-code-blocks) by enclosing code in three backticks and follow the leading ticks with the programming language of your snippet to get syntax highlighting. Optionally, you can also write the name of your code after the programming language.
+client = HunyClient(
+    api_key=os.getenv("HUNY_API_KEY"),
+    workspace_id=os.getenv("HUNY_WORKSPACE")
+)
 
-```java HelloWorld.java
-class HelloWorld {
-    public static void main(String[] args) {
-        System.out.println("Hello, World!");
+client.records.create(
+    stream_id="strm_92bx12",
+    payload={...},
+    idempotency_key="evt_001"
+)
+```
+</CodeGroup>
+
+## 지연 및 오류율 모니터 가져오기
+
+```javascript
+const metrics = await client.streams.metrics({
+  streamId: 'strm_92bx12',
+  window: '5m'
+});
+
+console.log(metrics.latency.p95); // 4.2s
+console.log(metrics.error_rate);  // 0.4%
+```
+
+```python
+metrics = client.streams.metrics(
+    stream_id="strm_92bx12",
+    window="5m"
+)
+
+print(metrics["latency"]["p95"])
+print(metrics["volume"]["ingested"])
+```
+
+## 재시도 + 에러 핸들링 패턴
+
+```typescript
+import pRetry from 'p-retry';
+import { HunyClient, HunyError } from '@huny/sdk';
+
+const client = new HunyClient({ /* ... */ });
+
+async function sendWithRetry(payload) {
+  return pRetry(async () => {
+    try {
+      return await client.records.create(payload);
+    } catch (error) {
+      if (error instanceof HunyError && error.status < 500) {
+        throw new pRetry.AbortError(error.message);
+      }
+      throw error;
     }
+  }, { retries: 3 });
 }
 ```
 
-````md
-```java HelloWorld.java
-class HelloWorld {
-    public static void main(String[] args) {
-        System.out.println("Hello, World!");
-    }
+## 서버리스 함수 예제
+
+```javascript
+export default async function handler(req, res) {
+  const client = new HunyClient({
+    apiKey: process.env.HUNY_API_KEY,
+    workspaceId: process.env.HUNY_WORKSPACE,
+    fetchOptions: { keepalive: false }
+  });
+
+  await client.records.create({
+    streamId: 'strm_92bx12',
+    payload: req.body
+  });
+
+  return res.status(200).json({ ok: true });
 }
 ```
-````
+
+## Go 언어(커뮤니티 SDK)
+
+```go
+package main
+
+import (
+  "github.com/huny-labs/huny-go"
+)
+
+func main() {
+  client := huny.NewClient(os.Getenv("HUNY_API_KEY"), huny.WithWorkspace(os.Getenv("HUNY_WORKSPACE")))
+
+  _, err := client.CreateRecord(context.Background(), huny.CreateRecordInput{
+    StreamID: "strm_92bx12",
+    Payload: map[string]any{
+      "id": "ord_123",
+      "event": "checkout.completed",
+    },
+  })
+
+  if err != nil {
+    log.Fatal(err)
+  }
+}
+```
+
+<Note>
+  추가 언어 샘플은 `https://github.com/huny-labs/sdks` 레포에서 확인할 수 있습니다.
+</Note>
